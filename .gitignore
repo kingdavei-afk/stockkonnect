@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# logs
+*.log
+
+# local database
+*.db
+*.db-journal
+
+# user uploads
+/public/uploads/

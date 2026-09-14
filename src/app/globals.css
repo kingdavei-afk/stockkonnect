@@ -1,26 +1,66 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  @apply bg-slate-100 text-slate-900 antialiased;
+}
+
+@utility card {
+  @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition;
+}
+
+@utility btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition;
+  @apply bg-indigo-600 text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+@utility btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition;
+  @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+@utility btn-danger {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition;
+  @apply bg-red-600 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+@utility input {
+  @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100;
+}
+
+@utility label {
+  @apply mb-1 block text-sm font-medium text-slate-700;
+}
+
+@utility badge {
+  @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+}
+
+th {
+  @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500;
+}
+
+td {
+  @apply px-4 py-3 text-sm;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #label-print,
+  #label-print * {
+    visibility: visible;
+  }
+  #label-print {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: 60mm;
+    height: fit-content;
+    border: none;
+  }
 }

@@ -1,0 +1,187 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String        @id @default(cuid())
+  email          String        @unique
+  passwordHash   String
+  name           String
+  role           String        @default("STAFF") // ADMIN | STAFF | SUPER_ADMIN
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime      @default(now())
+}
+
+model Organization {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  plan         String   @default("FREE") // GRATUIT | PRO | BUSINESS
+  billingCycle String?  // monthly | yearly
+  planStartsAt DateTime?
+  planEndsAt   DateTime?
+  maxUsers     Int      @default(2)
+  maxProducts  Int?     // null = illimité
+  trialEndsAt  DateTime? // fin de l'essai gratuit (7 jours)
+  status       String   @default("ACTIVE") // ACTIVE | SUSPENDED
+  // Informations générales
+  address      String?
+  phone        String?
+  email        String?
+  industry     String?  // domaine d'activité
+  // Informations sur les documents
+  taxId        String?  // numéro d'identité fiscale
+  bankAccount  String?  // numéro de compte bancaire
+  mainActivities String? // activités principales
+  createdAt    DateTime @default(now())
+  users        User[]
+  settings     Settings?
+  categories   Category[]
+  suppliers    Supplier[]
+  products     Product[]
+  movements    StockMovement[]
+  sales        Sale[]
+  purchases    Purchase[]
+  customers    Customer[]
+}
+
+model Settings {
+  id                String       @id @default(cuid())
+  organizationId    String       @unique
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  currency          String       @default("EUR")
+  lowStockThreshold Int          @default(5)
+}
+
+model Category {
+  id             String       @id @default(cuid())
+  name           String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  products       Product[]
+
+  @@unique([organizationId, name])
+}
+
+model Supplier {
+  id             String       @id @default(cuid())
+  name           String
+  email          String?
+  phone          String?
+  address        String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  products       Product[]
+  purchases      Purchase[]
+}
+
+model Product {
+  id             String          @id @default(cuid())
+  name           String
+  sku            String
+  barcode        String?
+  description    String?
+  price          Float           @default(0) // prix de vente
+  cost           Float           @default(0) // coût d'achat
+  quantity       Int             @default(0)
+  minStock       Int             @default(5)
+  image          String?
+  categoryId     String?
+  category       Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  supplierId     String?
+  supplier       Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  movements      StockMovement[]
+  saleItems      SaleItem[]
+  purchaseItems  PurchaseItem[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@unique([organizationId, sku])
+  @@index([organizationId])
+}
+
+model StockMovement {
+  id             String       @id @default(cuid())
+  type           String // IN | OUT | ADJUST
+  quantity       Int          // signée pour ADJUST (delta), positive sinon
+  note           String?
+  productId      String
+  product        Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId         String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
+}
+
+model Customer {
+  id             String       @id @default(cuid())
+  name           String
+  email          String?
+  phone          String?
+  address        String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sales          Sale[]
+}
+
+model Sale {
+  id             String       @id @default(cuid())
+  reference      String
+  status         String       @default("COMPLETED") // COMPLETED | CANCELLED
+  total          Float        @default(0)
+  customerId     String?
+  customer       Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items          SaleItem[]
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@unique([organizationId, reference])
+  @@index([organizationId, createdAt])
+}
+
+model SaleItem {
+  id        String  @id @default(cuid())
+  saleId    String
+  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Float
+}
+
+model Purchase {
+  id             String         @id @default(cuid())
+  reference      String
+  status         String         @default("COMPLETED") // COMPLETED | CANCELLED
+  total          Float          @default(0)
+  supplierId     String?
+  supplier       Supplier?      @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  items          PurchaseItem[]
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime       @default(now())
+
+  @@unique([organizationId, reference])
+  @@index([organizationId, createdAt])
+}
+
+model PurchaseItem {
+  id         String   @id @default(cuid())
+  purchaseId String
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  quantity   Int
+  unitCost   Float
+}
