@@ -142,7 +142,7 @@ export function SalesExportButton() {
                 disabled={busy}
                 onClick={() => run({})}
               >
-                Tout l'historique
+                Tout l&apos;historique
               </button>
             </div>
             <div className="mt-3 border-t border-slate-100 pt-3">

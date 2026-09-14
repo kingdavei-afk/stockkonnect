@@ -160,7 +160,7 @@ export function SettingsClient({
               </select>
             </div>
             <div>
-              <label className="label">Seuil global d'alerte stock</label>
+              <label className="label">Seuil global d&apos;alerte stock</label>
               <input
                 type="number"
                 min="0"
