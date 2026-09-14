@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { Boxes, BarChart3, ScanBarcode, ArrowLeftRight } from "lucide-react";
+import { Boxes, BarChart3, ScanBarcode, ArrowLeftRight, MessageCircle } from "lucide-react";
+
+const WHATSAPP_URL =
+  "https://wa.me/2250748323191?text=" +
+  encodeURIComponent("Bonjour Stockkonect, je souhaite avoir des informations !");
 
 export default function LandingPage() {
   return (
@@ -7,7 +11,7 @@ export default function LandingPage() {
       <header className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 sm:px-6">
         <div className="flex items-center gap-2 text-xl font-bold">
           <Boxes className="h-7 w-7 text-indigo-400" />
-          StockFlow
+          Stockkonect
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Link href="/login" className="btn text-white hover:bg-white/10">
@@ -72,15 +76,38 @@ export default function LandingPage() {
             >
               <Icon className="h-8 w-8 text-indigo-400" />
               <h3 className="mt-4 font-semibold">{title}</h3>
-              <p className="mt-1 text-sm text-slate-300">{desc}</p>
             </div>
           ))}
         </div>
 
         <p className="mt-16 text-sm text-slate-400">
-          Compte démo : demo@stockflow.fr / demo1234
+          Compte démo : demo@stockkonect.fr / demo1234
         </p>
       </section>
+
+      <footer className="mx-auto max-w-6xl px-4 pb-10 sm:px-6">
+        <div className="flex flex-col items-center gap-3 border-t border-white/10 pt-6 text-sm text-slate-300 sm:flex-row sm:justify-between">
+          <span>© {new Date().getFullYear()} Stockkonect — Gestion de stock</span>
+          <a
+            href={WHATSAPP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 rounded-full bg-emerald-500/15 px-4 py-2 font-medium text-emerald-300 transition hover:bg-emerald-500/25 hover:text-emerald-200"
+          >
+            <MessageCircle className="h-4 w-4" />
+            Besoin d&apos;aide ? Contactez-nous sur WhatsApp
+          </a>
+        </div>
+        <a
+          href={WHATSAPP_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Contacter Stockkonect sur WhatsApp"
+          className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 transition hover:scale-105 hover:bg-emerald-400"
+        >
+          <MessageCircle className="h-7 w-7" />
+        </a>
+      </footer>
     </main>
   );
 }

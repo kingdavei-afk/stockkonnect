@@ -8,7 +8,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-center gap-2 text-2xl font-bold text-slate-900">
           <Boxes className="h-8 w-8 text-indigo-600" />
-          StockFlow
+          Stockkonect
         </div>
         <div className="card p-8">
           <h1 className="text-xl font-bold">Connexion</h1>
@@ -23,7 +23,7 @@ export default function LoginPage() {
             </Link>
           </p>
           <p className="mt-4 rounded-lg bg-slate-50 p-3 text-center text-xs text-slate-500">
-            Démo : demo@stockflow.fr / demo1234
+            Démo : demo@stockkonect.fr / demo1234
           </p>
         </div>
       </div>

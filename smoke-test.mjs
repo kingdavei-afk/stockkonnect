@@ -32,7 +32,7 @@ log("GET /api/products (sans session)", await check("/api/products"));
 const login = await check("/api/auth/login", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ email: "demo@stockflow.fr", password: "demo1234" }),
+  body: JSON.stringify({ email: "demo@stockkonect.fr", password: "demo1234" }),
 });
 log("POST /api/auth/login (démo)", login);
 
@@ -42,7 +42,7 @@ log(
   await check("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "demo@stockflow.fr", password: "nope" }),
+    body: JSON.stringify({ email: "demo@stockkonect.fr", password: "nope" }),
   })
 );
 

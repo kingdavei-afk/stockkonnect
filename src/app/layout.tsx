@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "StockFlow — Gestion de stock",
+  title: "Stockkonect — Gestion de stock",
   description:
     "Application SaaS de gestion de stock : produits, mouvements, ventes, approvisionnements, alertes.",
 };

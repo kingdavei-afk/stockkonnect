@@ -5,23 +5,23 @@ const db = new PrismaClient();
 
 async function main() {
   // Compte plateforme (super-admin), sans entreprise — créé en premier, indépendamment de la démo
-  if (!(await db.user.findUnique({ where: { email: "admin@stockflow.fr" } }))) {
+  if (!(await db.user.findUnique({ where: { email: "admin@stockkonect.fr" } }))) {
     await db.user.create({
       data: {
-        email: "admin@stockflow.fr",
+        email: "admin@stockkonect.fr",
         name: "Super Admin",
         passwordHash: await bcrypt.hash("super1234", 10),
         role: "SUPER_ADMIN",
         organizationId: null,
       },
     });
-    console.log("Super-admin créé : admin@stockflow.fr / super1234");
+    console.log("Super-admin créé : admin@stockkonect.fr / super1234");
   }
 
-  const email = "demo@stockflow.fr";
+  const email = "demo@stockkonect.fr";
   const existing = await db.user.findUnique({ where: { email } });
   if (existing) {
-    console.log("Seed déjà appliqué (demo@stockflow.fr existe).");
+    console.log("Seed déjà appliqué (demo@stockkonect.fr existe).");
     return;
   }
 
@@ -79,7 +79,7 @@ async function main() {
   }
 
   console.log("Base de démonstration créée.");
-  console.log("Connexion : demo@stockflow.fr / demo1234");
+  console.log("Connexion : demo@stockkonect.fr / demo1234");
 }
 
 main()

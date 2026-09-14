@@ -22,8 +22,8 @@ const adminLinks = [
 
 const WHATSAPP_URL =
   "https://wa.me/2250748323191?text=" +
-  encodeURIComponent("Bonjour StockFlow, j'ai besoin d'aide !");
-const GUIDE_URL = "/guide-stockflow.pdf";
+  encodeURIComponent("Bonjour Stockkonect, j'ai besoin d'aide !");
+const GUIDE_URL = "/guide-stockkonect.pdf";
 
 function NavLinks({
   onNavigate,
@@ -87,7 +87,7 @@ function ToolsSection({ onNavigate }: { onNavigate?: () => void }) {
         className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-indigo-900/40 hover:text-indigo-300"
       >
         <BookOpen className="h-4 w-4 text-indigo-400" />
-        Apprendre StockFlow
+        Apprendre Stockkonect
       </a>
     </div>
   );
@@ -131,7 +131,7 @@ export function AppShell({
       <header className="sticky top-0 z-40 flex items-center justify-between bg-slate-900 px-4 py-3 lg:hidden">
         <div className="flex items-center gap-2 text-lg font-bold text-white">
           <Boxes className="h-6 w-6 text-indigo-400" />
-          StockFlow
+          Stockkonect
         </div>
         <button
           className="rounded-lg p-2 text-slate-300 hover:bg-slate-800 hover:text-white"
@@ -147,7 +147,7 @@ export function AppShell({
         <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-slate-900 lg:flex">
           <div className="flex items-center gap-2 px-6 py-5 text-lg font-bold text-white">
             <Boxes className="h-6 w-6 text-indigo-400" />
-            StockFlow
+            Stockkonect
           </div>
           {/* Nom de l'admin connecté + entreprise */}
           <UserBlock userName={userName} organizationName={organizationName} />
@@ -166,7 +166,7 @@ export function AppShell({
               <div className="flex items-center justify-between px-6 py-5">
                 <div className="flex items-center gap-2 text-lg font-bold text-white">
                   <Boxes className="h-6 w-6 text-indigo-400" />
-                  StockFlow
+                  Stockkonect
                 </div>
                 <button
                   className="rounded-lg p-2 text-slate-300 hover:bg-slate-800 hover:text-white"

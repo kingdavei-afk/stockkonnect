@@ -66,7 +66,7 @@ export function AdminClient({ orgs: initial }: { orgs: Org[] }) {
             Console Super-Admin
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Vue plateforme — toutes les entreprises inscrites sur StockFlow.
+            Vue plateforme — toutes les entreprises inscrites sur Stockkonect.
           </p>
         </div>
         <div className="relative w-full sm:w-64">

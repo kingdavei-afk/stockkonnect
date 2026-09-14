@@ -20,7 +20,7 @@ export function AdminShell({
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 py-3 sm:px-6">
           <Link href="/admin" className="flex items-center gap-2 text-lg font-bold text-white">
             <Boxes className="h-6 w-6 text-indigo-400" />
-            StockFlow
+            Stockkonect
             <span className="ml-2 flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-300">
               <ShieldAlert className="h-3 w-3" />
               Plateforme

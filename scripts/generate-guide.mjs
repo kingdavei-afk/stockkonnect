@@ -1,10 +1,10 @@
-// Génère public/guide-stockflow.pdf (guide d'utilisation en français)
+// Génère public/guide-stockkonect.pdf (guide d'utilisation en français)
 // Usage : node scripts/generate-guide.mjs
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "public", "guide-stockflow.pdf");
+const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "public", "guide-stockkonect.pdf");
 
 // --- PDF helpers (PDF 1.4 minimal, Helvetica/WinAnsi) ---
 const latin1 = (s) =>
@@ -94,7 +94,7 @@ class Pdf {
 // --- contenu du guide ---
 const doc = new Pdf();
 
-doc.text("StockFlow - Guide d'utilisation", { size: 22, bold: true, gap: 4 });
+doc.text("Stockkonect - Guide d'utilisation", { size: 22, bold: true, gap: 4 });
 doc.text("Documentation officielle - gestion de stock pour votre entreprise", {
   size: 11,
   color: "0.35 0.35 0.45",
@@ -145,7 +145,7 @@ doc.spacer(6);
 
 doc.text("7. Assistance", { size: 14, bold: true });
 doc.text("- Besoin d'aide : bouton WhatsApp dans la barre laterale.", { indent: 10 });
-doc.text("- Support StockFlow - reponse rapide du lundi au samedi.", { indent: 10 });
+doc.text("- Support Stockkonect - reponse rapide du lundi au samedi.", { indent: 10 });
 
 doc.pageBreak();
 doc.text("Astuces", { size: 14, bold: true });
@@ -155,7 +155,7 @@ doc.text("  atteint le seuil defini sur le produit.", { indent: 10 });
 doc.text("- Changez la devise (EUR, XOF, MAD...) dans Parametres.", { indent: 10 });
 doc.spacer(10);
 doc.line();
-doc.text("Merci d'utiliser StockFlow !", { size: 12, bold: true });
+doc.text("Merci d'utiliser Stockkonect !", { size: 12, bold: true });
 doc.text("Support WhatsApp : +225 07 48 32 31 91", { indent: 10, color: "0.1 0.4 0.2" });
 
 writeFileSync(OUT, doc.build());

@@ -1,4 +1,4 @@
-# StockFlow — SaaS de gestion de stock
+# Stockkonect — SaaS de gestion de stock
 
 Application web multi-entreprises de gestion de stock construite avec **Next.js 15**, **TypeScript**, **Prisma** (SQLite) et **Tailwind CSS**. Interface entièrement en français.
 
@@ -15,6 +15,7 @@ Application web multi-entreprises de gestion de stock construite avec **Next.js 
 - **Tableau de bord** : valeur du stock, CA du mois, achats du mois, graphiques 14 jours + répartition, alertes stock bas
 - **Étiquettes code-barres** : impression (Code 128)
 - **Paramètres** : devise, seuil d'alerte global
+- **Assistance** : contact **WhatsApp** (sidebar, landing et footer) + guide d'utilisation PDF intégré (`/guide-stockkonect.pdf`)
 
 ## Démarrage rapide
 
@@ -31,8 +32,8 @@ Ouvrez [http://localhost:3000](http://localhost:3000).
 
 | Compte | Email | Mot de passe | Rôle |
 |---|---|---|---|
-| Entreprise démo | `demo@stockflow.fr` | `demo1234` | Admin de « Demo SAS » |
-| Plateforme | `admin@stockflow.fr` | `super1234` | Super-Admin (console `/admin`)|
+| Entreprise démo | `demo@stockkonect.fr` | `demo1234` | Admin de « Demo SAS » |
+| Plateforme | `admin@stockkonect.fr` | `super1234` | Super-Admin (console `/admin`)|
 
 ## Rôles & multi-entreprises (SaaS)
 
