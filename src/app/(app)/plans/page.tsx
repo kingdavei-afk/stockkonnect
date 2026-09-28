@@ -8,10 +8,28 @@ export default async function PlansPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  const org = await db.organization.findUnique({
-    where: { id: user.organizationId },
-    include: { _count: { select: { users: true } } },
-  });
+  const [org, payments] = await Promise.all([
+    db.organization.findUnique({
+      where: { id: user.organizationId },
+      include: { _count: { select: { users: true } } },
+    }),
+    db.payment.findMany({
+      where: { organizationId: user.organizationId },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: {
+        id: true,
+        transactionId: true,
+        amount: true,
+        cycle: true,
+        planId: true,
+        status: true,
+        providerMethod: true,
+        paidAt: true,
+        createdAt: true,
+      },
+    }),
+  ]);
 
   return (
     <Suspense fallback={null}>
@@ -21,6 +39,16 @@ export default async function PlansPage() {
         currentCycle={(org?.billingCycle as "monthly" | "yearly" | null) ?? null}
         userCount={org?._count.users ?? 1}
         currency={user.organization.settings?.currency ?? "XOF"}
+        payments={payments.map((p) => ({
+          id: p.id,
+          transactionId: p.transactionId,
+          amount: p.amount,
+          cycle: p.cycle,
+          planId: p.planId,
+          status: p.status,
+          method: p.providerMethod,
+          paidAt: (p.paidAt ?? p.createdAt).toISOString(),
+        }))}
       />
     </Suspense>
   );

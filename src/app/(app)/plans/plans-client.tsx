@@ -3,9 +3,27 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Check, ChevronLeft, Sparkles, X } from "lucide-react";
+import { Check, ChevronLeft, Download, Receipt, Sparkles, X } from "lucide-react";
 import { Modal } from "@/components/ui";
 import { PLANS, type Plan } from "@/lib/plans";
+import {
+  cycleLabel,
+  formatAmount,
+  paymentMethodLabel,
+  paymentStatusBadge,
+  planLabel,
+} from "@/lib/payments";
+
+export type PaymentRow = {
+  id: string;
+  transactionId: string;
+  amount: number;
+  cycle: string;
+  planId: string;
+  status: string;
+  method: string | null;
+  paidAt: string;
+};
 
 type CheckoutResponse = {
   ok: boolean;
@@ -22,12 +40,14 @@ export function PlansClient({
   currentCycle,
   userCount,
   currency,
+  payments,
 }: {
   isAdmin: boolean;
   currentPlan: string;
   currentCycle: "monthly" | "yearly" | null;
   userCount: number;
   currency: string;
+  payments: PaymentRow[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -230,6 +250,79 @@ export function PlansClient({
           );
         })}
       </div>
+
+      {/* Historique des paiements */}
+      <section className="mt-10">
+        <h2 className="flex items-center gap-2 text-lg font-bold">
+          <Receipt className="h-5 w-5 text-slate-400" />
+          Historique des paiements
+        </h2>
+        {payments.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-400">Aucun paiement pour le moment.</p>
+        ) : (
+          <div className="card mt-3 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th>Transaction</th>
+                    <th>Offre</th>
+                    <th>Montant</th>
+                    <th>Statut</th>
+                    <th>Méthode</th>
+                    <th>Date</th>
+                    <th className="text-right">Reçu</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {payments.map((p) => {
+                    const badge = paymentStatusBadge(p.status);
+                    return (
+                      <tr key={p.id} className="hover:bg-slate-50">
+                        <td className="font-mono text-xs">{p.transactionId}</td>
+                        <td>
+                          <span className="badge bg-slate-100 text-slate-600">
+                            {planLabel(p.planId)}
+                            {cycleLabel(p.cycle) ? ` · ${cycleLabel(p.cycle)}` : ""}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap font-semibold">{formatAmount(p.amount)} F CFA</td>
+                        <td>
+                          <span className={`badge ${badge.className}`}>{badge.label}</span>
+                        </td>
+                        <td className="text-slate-500">{paymentMethodLabel(p.method)}</td>
+                        <td className="whitespace-nowrap text-slate-500">
+                          {new Date(p.paidAt).toLocaleDateString("fr-FR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </td>
+                        <td className="text-right">
+                          {p.status === "SUCCESS" ? (
+                            <a
+                              href={`/api/subscription/invoice?transaction=${encodeURIComponent(p.transactionId)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn-secondary !px-3 !py-1.5 text-xs"
+                            >
+                              <Download className="h-3 w-3" /> Facture
+                            </a>
+                          ) : (
+                            <span className="text-slate-300">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* Modal de confirmation avant paiement */}
       <Modal open={!!checkout} onClose={() => setCheckout(null)} title="Paiement sécurisé">
