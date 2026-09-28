@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
-import { randomUUID } from "crypto";
 import { getSessionUser } from "@/lib/auth";
 
 const ALLOWED = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 const MAX_SIZE = 4 * 1024 * 1024; // 4 Mo
 
+/**
+ * Upload d'images compatible serverless (Vercel) : le système de fichiers y est
+ * en lecture seule, donc l'image est renvoyée en data URL stockée en base
+ * (colonne Product.image, TEXT). Alternative production : passer à un stockage
+ * objet (S3, Cloudinary) et renvoyer son URL publique.
+ */
 export async function POST(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
@@ -26,11 +29,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Fichier trop volumineux (max 4 Mo)" }, { status: 400 });
   }
 
-  const ext = file.type.split("/")[1].replace("jpeg", "jpg");
-  const filename = `${randomUUID()}.${ext}`;
-  const dir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, filename), Buffer.from(await file.arrayBuffer()));
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const dataUrl = `data:${file.type};base64,${buffer.toString("base64")}`;
 
-  return NextResponse.json({ url: `/uploads/${filename}` });
+  return NextResponse.json({ url: dataUrl });
 }

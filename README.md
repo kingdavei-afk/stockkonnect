@@ -19,9 +19,12 @@ Application web multi-entreprises de gestion de stock construite avec **Next.js 
 
 ## Démarrage rapide
 
+L'application utilise **PostgreSQL** (Neon, Supabase, Railway…) via Prisma.
+
 ```bash
 npm install
-npx prisma migrate dev      # crée la base SQLite
+# configurez DATABASE_URL et AUTH_SECRET dans .env (voir .env.example)
+npx prisma migrate dev      # crée les tables
 npm run db:seed             # données de démo (optionnel)
 npm run dev
 ```
@@ -47,8 +50,20 @@ Le cloisonnement des données est assuré partout par `organizationId` : chaque 
 
 Copiez `.env.example` vers `.env` :
 
-- `DATABASE_URL` — chemin de la base SQLite (`file:./dev.db`)
-- `AUTH_SECRET` — secret de signature des sessions JWT (**à changer en production**)
+- `DATABASE_URL` — chaîne de connexion **PostgreSQL** (Neon : `postgresql://user:pass@ep-xxx.aws.neon.tech/neondb?sslmode=require`)
+- `AUTH_SECRET` — secret de signature des sessions JWT (**obligatoire**, à changer en production)
+
+## Déploiement Vercel
+
+1. Poussez le code sur GitHub (fait) — le dépôt est déjà connecté à Vercel (`stockkonnect.vercel.app`)
+2. Dans **Vercel → votre projet → Settings → Environment Variables**, ajoutez :
+   - `DATABASE_URL` : votre chaîne Neon/Supabase (utilisez la **pooled connection** Neon pour de meilleures perfs serverless)
+   - `AUTH_SECRET` : une chaîne aléatoire (`openssl rand -base64 32`)
+3. **Redeploy** (les variables ne s'appliquent qu'aux nouveaux déploiements)
+4. Créez les tables : en local avec le même `DATABASE_URL` dans `.env`, lancez `npx prisma migrate deploy`
+5. (Optionnel) données de démo : `npm run db:seed` avec la même URL
+
+> ⚠️ Sur Vercel, le système de fichiers est en lecture seule : l'upload d'images renvoie des **data URLs** stockées en base. Pour de gros volumes, passez à un stockage objet (S3, Cloudinary).
 
 ## Scripts
 
@@ -80,6 +95,6 @@ prisma/
 
 ## Notes de production
 
-- Changer `AUTH_SECRET` et utiliser une base PostgreSQL/MySQL (changer le `provider` dans `schema.prisma`)
-- Les images uploadées vont dans `public/uploads` (préférer un stockage objet type S3 en production)
-- Ajouter HTTPS (cookies `secure` automatiquement en production)
+- Changer `AUTH_SECRET` (cookie `secure` automatique en HTTPS)
+- Les images uploadées sont stockées en data URL en base (ou passez à S3/Cloudinary)
+- Neon gratuit convient jusqu'à ~0,5 Go ; surveillez la taille si les photos produits s'accumulent
