@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   const check = await checkPayment(transactionId);
   if (!check.ok) return NextResponse.json({ status: payment.status });
 
-  if (check.status === "VALIDATED" && payment.status !== "SUCCESS") {
+  if (check.status === "SUCCESS" && payment.status !== "SUCCESS") {
     if (check.amount != null && Math.round(check.amount) !== Math.round(payment.amount)) {
       await db.payment.update({ where: { id: payment.id }, data: { status: "FAILED" } });
       return NextResponse.json({ status: "FAILED", error: "Montant incohérent" });
@@ -51,12 +51,15 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  if ((check.status === "REFUSED" || check.status === "CANCELLED") && payment.status === "PENDING") {
+  if (
+    (check.status === "FAILED" || check.status === "EXPIRED" || check.status === "INSUFFICIENT_BALANCE") &&
+    payment.status === "PENDING"
+  ) {
     await db.payment.update({
       where: { id: payment.id },
       data: { status: "FAILED", metadata: JSON.stringify({ status: check.status }) },
     });
-    return NextResponse.json({ status: "FAILED", error: check.status === "CANCELLED" ? "Paiement annulé" : "Paiement refusé" });
+    return NextResponse.json({ status: "FAILED", error: check.status === "EXPIRED" ? "Paiement expiré" : "Paiement refusé" });
   }
 
   return NextResponse.json({ status: payment.status });

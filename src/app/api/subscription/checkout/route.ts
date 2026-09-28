@@ -70,13 +70,12 @@ export async function POST(req: NextRequest) {
     returnUrl: `${baseUrl(req)}/plans?payment=${transactionId}`,
     notifyUrl: `${baseUrl(req)}/api/subscription/webhook`,
     customer: {
-      name: (org.name ?? "Client").split(" ")[0].slice(0, 50),
+      name: (org.name ?? "Client").split(" ")[0].slice(0, 100),
       surname: org.name ?? "Client",
       email: org.email ?? user.email,
       phone: org.phone,
       city: org.address?.slice(0, 80) ?? "Abidjan",
     },
-    metadata: { organizationId: org.id, planId, cycle },
   });
 
   if (!initiated.ok) {
@@ -92,7 +91,10 @@ export async function POST(req: NextRequest) {
 
   await db.payment.update({
     where: { id: payment.id },
-    data: { providerToken: initiated.token },
+    data: {
+      providerToken: initiated.paymentToken,
+      metadata: JSON.stringify({ org: org.name, plan: planId, cycle, notifyToken: initiated.notifyToken }),
+    },
   });
 
   return NextResponse.json({ ok: true, mode: "cinetpay", paymentUrl: initiated.paymentUrl });
