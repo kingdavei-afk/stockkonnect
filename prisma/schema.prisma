@@ -49,6 +49,7 @@ model Organization {
   sales        Sale[]
   purchases    Purchase[]
   customers    Customer[]
+  payments     Payment[]
 }
 
 model Settings {
@@ -184,4 +185,25 @@ model PurchaseItem {
   product    Product  @relation(fields: [productId], references: [id])
   quantity   Int
   unitCost   Float
+}
+
+model Payment {
+  id             String    @id @default(cuid())
+  transactionId  String    @unique // référence envoyée à CinetPay (PAY-...)
+  provider       String    @default("cinetpay")
+  amount         Float
+  currency       String    @default("XOF")
+  cycle          String    // monthly | yearly
+  planId         String
+  status         String    @default("PENDING") // PENDING | SUCCESS | FAILED
+  providerToken  String?   // token CinetPay
+  providerMethod String?   // ex. ORANGE_MONEY_CI
+  metadata       String?   // JSON libre
+  paidAt         DateTime?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([organizationId, createdAt])
 }

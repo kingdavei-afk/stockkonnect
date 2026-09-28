@@ -9,7 +9,10 @@ export async function middleware(req: NextRequest) {
   const session = token ? await verifySession(token) : null;
 
   const isPublic =
-    PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/api/auth");
+    PUBLIC_PATHS.includes(pathname) ||
+    pathname.startsWith("/api/auth") ||
+    // Webhook serveur-à-serveur CinetPay (authentifié par re-vérification API)
+    pathname === "/api/subscription/webhook";
 
   if (isPublic) {
     if (session && (pathname === "/login" || pathname === "/register")) {

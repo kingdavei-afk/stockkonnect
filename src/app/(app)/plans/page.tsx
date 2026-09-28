@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { db } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -13,12 +14,14 @@ export default async function PlansPage() {
   });
 
   return (
-    <PlansClient
-      isAdmin={user.role === "ADMIN"}
-      currentPlan={org?.plan ?? "GRATUIT"}
-      currentCycle={(org?.billingCycle as "monthly" | "yearly" | null) ?? null}
-      userCount={org?._count.users ?? 1}
-      currency={user.organization.settings?.currency ?? "XOF"}
-    />
+    <Suspense fallback={null}>
+      <PlansClient
+        isAdmin={user.role === "ADMIN"}
+        currentPlan={org?.plan ?? "GRATUIT"}
+        currentCycle={(org?.billingCycle as "monthly" | "yearly" | null) ?? null}
+        userCount={org?._count.users ?? 1}
+        currency={user.organization.settings?.currency ?? "XOF"}
+      />
+    </Suspense>
   );
 }

@@ -52,6 +52,18 @@ Copiez `.env.example` vers `.env` :
 
 - `DATABASE_URL` — chaîne de connexion **PostgreSQL** (Neon : `postgresql://user:pass@ep-xxx.aws.neon.tech/neondb?sslmode=require`)
 - `AUTH_SECRET` — secret de signature des sessions JWT (**obligatoire**, à changer en production)
+- `CINETPAY_API_KEY` / `CINETPAY_SITE_ID` — **paiements réels** (Mobile Money + cartes via CinetPay). Sans ces clés, le paiement d'abonnement reste **simulé** (mode démo, aucun débit)
+
+## Paiements d'abonnement (CinetPay)
+
+Les abonnements Pro/Business s'encaissent via **CinetPay Checkout v2** (Orange Money, MTN, Moov, Wave, Visa/Mastercard) :
+
+1. Créez un compte marchand sur [cinetpay.com](https://cinetpay.com), récupérez **API key** (page Intégration) et **site_id** (après abonnement à un service)
+2. Ajoutez `CINETPAY_API_KEY` et `CINETPAY_SITE_ID` dans `.env` (local) et dans les variables Vercel
+3. Dans le back-office CinetPay, configurez l'URL de notification : `https://votre-domaine/api/subscription/webhook`
+4. C'est tout : sans clés, le flux reste en mode démo ; avec les clés, le paiement part sur la caisse CinetPay et l'abonnement s'active automatiquement (webhook vérifié + polling au retour)
+
+Sécurité : le webhook ne fait jamais confiance au POST reçu — chaque notification est revérifiée via `/v2/payment/check` et le montant est contrôlé avant activation. Chaque transaction est stockée en base (table `Payment`) avec statut et méthode de paiement.
 
 ## Déploiement Vercel
 

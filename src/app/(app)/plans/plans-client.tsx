@@ -1,20 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Check, ChevronLeft, Sparkles, X } from "lucide-react";
 import { Modal } from "@/components/ui";
 import { PLANS, type Plan } from "@/lib/plans";
 
-const PAYMENT_METHODS = [
-  { id: "orange-money", label: "Orange Money", hint: "+225 07 48 32 31 91" },
-  { id: "wave", label: "Wave", hint: "+225 07 48 32 31 91" },
-  { id: "mtn-money", label: "MTN Money", hint: "+225 05 04 48 32 31" },
-  { id: "card", label: "Carte bancaire", hint: "Visa / Mastercard" },
-] as const;
-
-type PaymentMethod = (typeof PAYMENT_METHODS)[number]["id"];
+type CheckoutResponse = {
+  ok: boolean;
+  mode: "gratuit" | "demo" | "cinetpay";
+  paymentUrl?: string;
+  endsAt?: string;
+  amountPaid?: number;
+  error?: string;
+};
 
 export function PlansClient({
   isAdmin,
@@ -30,33 +30,81 @@ export function PlansClient({
   currency: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
   const [checkout, setCheckout] = useState<Plan | null>(null);
-  const [method, setMethod] = useState<PaymentMethod>("orange-money");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [pending, setPending] = useState<string | null>(null); // transaction en attente de confirmation
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fmt = (n: number) => (n === 0 ? "Gratuit" : `${n.toLocaleString("fr-FR")} F CFA`);
   const fmtProducts = (n: number | null) => (n === null ? "Produits illimités" : `${n} produits`);
+
+  // Retour de CinetPay : /plans?payment=PAY-... → polling de vérification
+  useEffect(() => {
+    const txn = searchParams.get("payment");
+    if (!txn) return;
+    // nettoie l'URL immédiatement (évite de re-poller au refresh)
+    window.history.replaceState({}, "", "/plans");
+    setPending(txn);
+
+    let attempts = 0;
+    pollRef.current = setInterval(async () => {
+      attempts++;
+      if (attempts > 40) {
+        clearInterval(pollRef.current!);
+        setPending(null);
+        setError("La confirmation du paiement prend trop de temps. Contactez le support si le débit a été effectué.");
+        return;
+      }
+      const res = await fetch(`/api/subscription/verify?transaction=${encodeURIComponent(txn)}`);
+      const data = await res.json().catch(() => null);
+      if (data?.status === "SUCCESS") {
+        clearInterval(pollRef.current!);
+        setPending(null);
+        setSuccess("Paiement confirmé ! Votre abonnement est activé.");
+        router.refresh();
+      } else if (data?.status === "FAILED") {
+        clearInterval(pollRef.current!);
+        setPending(null);
+        setError(data?.error ?? "Le paiement n'a pas abouti.");
+      }
+    }, 3000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function activate() {
     if (!checkout) return;
     setBusy(true);
     setError(null);
-    const res = await fetch("/api/subscription", {
+    const res = await fetch("/api/subscription/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ planId: checkout.id, cycle, paymentMethod: method }),
+      body: JSON.stringify({ planId: checkout.id, cycle }),
     });
     setBusy(false);
-    const data = await res.json().catch(() => null);
-    if (!res.ok) {
-      setError(data?.error ?? "Échec du paiement");
+    const data: CheckoutResponse | null = await res.json().catch(() => null);
+    if (!res.ok || !data?.ok) {
+      setError(data?.error ?? "Échec de l'initialisation du paiement");
       return;
     }
+    if (data.mode === "cinetpay" && data.paymentUrl) {
+      // Redirection vers la caisse CinetPay (Mobile Money + cartes)
+      window.location.href = data.paymentUrl;
+      return;
+    }
+    // Modes sans redirection (gratuit ou démo)
     setCheckout(null);
-    setSuccess(`Abonnement ${data.plan} activé — ${fmt(data.amountPaid)} payés via ${data.method} jusqu'au ${new Date(data.endsAt).toLocaleDateString("fr-FR")}.`);
+    setSuccess(
+      data.mode === "demo"
+        ? `Mode démo : abonnement ${checkout.name} activé jusqu'au ${new Date(data.endsAt!).toLocaleDateString("fr-FR")} (aucun débit). Configurez les clés CinetPay pour encaisser réellement.`
+        : `Abonnement gratuit activé jusqu'au ${new Date(data.endsAt!).toLocaleDateString("fr-FR")}.`
+    );
     router.refresh();
   }
 
@@ -87,6 +135,12 @@ export function PlansClient({
       )}
       {error && !checkout && (
         <div className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
+      )}
+      {pending && (
+        <div className="mt-4 flex items-center gap-3 rounded-lg bg-indigo-50 px-4 py-3 text-sm text-indigo-700">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+          Paiement en cours de confirmation (transaction {pending})…
+        </div>
       )}
 
       {/* Bascule mensuel / annuel */}
@@ -177,8 +231,8 @@ export function PlansClient({
         })}
       </div>
 
-      {/* Modal de paiement */}
-      <Modal open={!!checkout} onClose={() => setCheckout(null)} title="Paiement">
+      {/* Modal de confirmation avant paiement */}
+      <Modal open={!!checkout} onClose={() => setCheckout(null)} title="Paiement sécurisé">
         {checkout && (
           <div className="space-y-4">
             <div className="rounded-lg bg-slate-50 p-4">
@@ -193,40 +247,17 @@ export function PlansClient({
             {error && (
               <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
             )}
-            <div>
-              <p className="label">Moyen de paiement</p>
-              <div className="grid gap-2">
-                {PAYMENT_METHODS.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setMethod(m.id)}
-                    className={`flex items-center justify-between rounded-lg border px-4 py-3 text-sm transition ${
-                      method === m.id
-                        ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                        : "border-slate-200 hover:bg-slate-50"
-                    }`}
-                  >
-                    <span className="font-medium">{m.label}</span>
-                    <span className="text-xs text-slate-400">{m.hint}</span>
-                    {method === m.id ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <X className="h-4 w-4 text-transparent" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <p className="text-xs text-slate-400">
-              Démo : le paiement est simulé, aucun débit réel ne sera effectué.
+            <p className="text-sm text-slate-600">
+              Vous serez redirigé vers la plateforme sécurisée <strong>CinetPay</strong> pour régler par
+              Mobile Money (Orange, MTN, Moov, Wave) ou carte bancaire. Vous reviendrez automatiquement
+              sur Stockkonect une fois le paiement effectué.
             </p>
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button type="button" className="btn-secondary" onClick={() => setCheckout(null)}>
                 Annuler
               </button>
               <button type="button" className="btn-primary" onClick={activate} disabled={busy}>
-                {busy ? "Paiement en cours…" : `Payer ${fmt(cycle === "monthly" ? checkout.monthly : checkout.yearly)}`}
+                {busy ? "Redirection…" : `Payer ${fmt(cycle === "monthly" ? checkout.monthly : checkout.yearly)}`}
               </button>
             </div>
           </div>
