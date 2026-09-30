@@ -10,6 +10,7 @@ import {
   paymentStatusBadge,
   planLabel,
 } from "@/lib/payments";
+import { PLANS, type PlanId } from "@/lib/plans";
 
 type Org = {
   id: string;
@@ -17,6 +18,10 @@ type Org = {
   slug: string;
   plan: string;
   maxUsers: number;
+  maxProducts: number | null;
+  billingCycle: string | null;
+  planEndsAt: string | null;
+  trialEndsAt: string | null;
   status: string;
   createdAt: string;
   _count: { users: number; products: number; sales: number };
@@ -110,6 +115,52 @@ export function AdminClient({
     }
     setOrgs((prev) => prev.map((o) => (o.id === org.id ? { ...o, status: next } : o)));
     router.refresh();
+  }
+
+  async function assignPlan(org: Org, planId: PlanId, billingCycle?: "monthly" | "yearly") {
+    if (org.plan === planId && (planId === "GRATUIT" || org.billingCycle === billingCycle)) return;
+    setBusyId(org.id);
+    setError(null);
+    const res = await fetch("/api/admin/orgs", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: org.id, planId, billingCycle }),
+    });
+    const data = await res.json().catch(() => null);
+    setBusyId(null);
+    if (!res.ok) {
+      setError(data?.error ?? "Impossible de modifier le plan");
+      return;
+    }
+    setOrgs((prev) => prev.map((item) => item.id === org.id
+      ? {
+          ...item,
+          plan: data.plan,
+          maxUsers: data.maxUsers,
+          maxProducts: data.maxProducts,
+          billingCycle: data.billingCycle,
+          planEndsAt: data.planEndsAt,
+          trialEndsAt: data.trialEndsAt,
+        }
+      : item));
+    router.refresh();
+  }
+
+  function handlePlanChange(org: Org, value: string) {
+    if (value === "GRATUIT") {
+      void assignPlan(org, "GRATUIT");
+      return;
+    }
+    const [planId, billingCycle] = value.split(":") as [PlanId, "monthly" | "yearly"];
+    void assignPlan(org, planId, billingCycle);
+  }
+
+  function expirationLabel(org: Org) {
+    const date = org.plan === "GRATUIT" ? org.trialEndsAt : org.planEndsAt;
+    if (!date) return "—";
+    const formatted = new Date(date).toLocaleDateString("fr-FR");
+    if (org.plan === "GRATUIT") return new Date(date) > new Date() ? `Essai jusqu’au ${formatted}` : `Essai terminé le ${formatted}`;
+    return `Le ${formatted}`;
   }
 
   return (
@@ -206,11 +257,12 @@ export function AdminClient({
       {tab === "orgs" ? (
         <div className="card mt-4 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] divide-y divide-slate-200">
+            <table className="w-full min-w-[1060px] divide-y divide-slate-200">
               <thead className="bg-slate-50">
                 <tr>
                   <th>Entreprise</th>
                   <th>Plan</th>
+                  <th>Expiration</th>
                   <th>Utilisateurs</th>
                   <th>Produits</th>
                   <th>Ventes</th>
@@ -230,14 +282,21 @@ export function AdminClient({
                       <p className="text-xs text-slate-400">{o.slug}</p>
                     </td>
                     <td>
-                      <span
-                        className={`badge ${
-                          o.plan === "PRO" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
-                        }`}
+                      <select
+                        className="input min-w-32 !py-1.5 text-xs"
+                        value={o.plan === "GRATUIT" ? "GRATUIT" : `${o.plan}:${o.billingCycle ?? "monthly"}`}
+                        disabled={busyId === o.id}
+                        aria-label={`Plan de ${o.name}`}
+                        onChange={(event) => handlePlanChange(o, event.target.value)}
                       >
-                        {o.plan === "PRO" ? "Pro" : "Gratuit"}
-                      </span>
+                        <option value="GRATUIT">Gratuit · essai de 7 jours</option>
+                        {PLANS.filter((plan) => plan.id !== "GRATUIT").flatMap((plan) => ([
+                          <option key={`${plan.id}:monthly`} value={`${plan.id}:monthly`}>{planLabel(plan.id)} · mensuel</option>,
+                          <option key={`${plan.id}:yearly`} value={`${plan.id}:yearly`}>{planLabel(plan.id)} · annuel</option>,
+                        ]))}
+                      </select>
                     </td>
+                    <td className="whitespace-nowrap text-xs text-slate-500">{expirationLabel(o)}</td>
                     <td className="font-mono">
                       {o._count.users} / {o.maxUsers}
                     </td>

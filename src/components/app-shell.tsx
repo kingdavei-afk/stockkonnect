@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
-import { Boxes, Menu, X, Users, LifeBuoy, MessageCircle, BookOpen } from "lucide-react";
+import { Boxes, Menu, X, LifeBuoy, MessageCircle, BookOpen, CreditCard } from "lucide-react";
 
 const baseLinks = [
   { href: "/dashboard", label: "Tableau de bord" },
@@ -69,6 +69,14 @@ function ToolsSection({ onNavigate }: { onNavigate?: () => void }) {
         <LifeBuoy className="h-3.5 w-3.5" />
         Outils et Assistance
       </p>
+      <Link
+        href="/plans"
+        onClick={onNavigate}
+        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-indigo-900/40 hover:text-indigo-300"
+      >
+        <CreditCard className="h-4 w-4 text-indigo-400" />
+        Abonnements
+      </Link>
       <a
         href={WHATSAPP_URL}
         target="_blank"

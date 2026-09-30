@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, ChevronLeft, Download, Receipt, Sparkles, X } from "lucide-react";
-import { Modal } from "@/components/ui";
+import { Check, ChevronLeft, Download, Receipt } from "lucide-react";
 import { PLANS, type Plan } from "@/lib/plans";
 import {
   cycleLabel,
@@ -25,106 +24,45 @@ export type PaymentRow = {
   paidAt: string;
 };
 
-type CheckoutResponse = {
-  ok: boolean;
-  mode: "gratuit" | "demo" | "cinetpay";
-  paymentUrl?: string;
-  endsAt?: string;
-  amountPaid?: number;
-  error?: string;
-};
-
 export function PlansClient({
   isAdmin,
+  organizationName,
   currentPlan,
   currentCycle,
   userCount,
-  currency,
   payments,
 }: {
   isAdmin: boolean;
+  organizationName: string;
   currentPlan: string;
   currentCycle: "monthly" | "yearly" | null;
   userCount: number;
-  currency: string;
   payments: PaymentRow[];
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
-  const [checkout, setCheckout] = useState<Plan | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [pending, setPending] = useState<string | null>(null); // transaction en attente de confirmation
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fmt = (n: number) => (n === 0 ? "Gratuit" : `${n.toLocaleString("fr-FR")} F CFA`);
   const fmtProducts = (n: number | null) => (n === null ? "Produits illimités" : `${n} produits`);
 
-  // Retour de CinetPay : /plans?payment=PAY-... → polling de vérification
-  useEffect(() => {
-    const txn = searchParams.get("payment");
-    if (!txn) return;
-    // nettoie l'URL immédiatement (évite de re-poller au refresh)
-    window.history.replaceState({}, "", "/plans");
-    setPending(txn);
-
-    let attempts = 0;
-    pollRef.current = setInterval(async () => {
-      attempts++;
-      if (attempts > 40) {
-        clearInterval(pollRef.current!);
-        setPending(null);
-        setError("La confirmation du paiement prend trop de temps. Contactez le support si le débit a été effectué.");
-        return;
-      }
-      const res = await fetch(`/api/subscription/verify?transaction=${encodeURIComponent(txn)}`);
-      const data = await res.json().catch(() => null);
-      if (data?.status === "SUCCESS") {
-        clearInterval(pollRef.current!);
-        setPending(null);
-        setSuccess("Paiement confirmé ! Votre abonnement est activé.");
-        router.refresh();
-      } else if (data?.status === "FAILED") {
-        clearInterval(pollRef.current!);
-        setPending(null);
-        setError(data?.error ?? "Le paiement n'a pas abouti.");
-      }
-    }, 3000);
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function activate() {
-    if (!checkout) return;
+  async function activateFreePlan() {
     setBusy(true);
     setError(null);
     const res = await fetch("/api/subscription/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ planId: checkout.id, cycle }),
+      body: JSON.stringify({ planId: "GRATUIT", cycle }),
     });
     setBusy(false);
-    const data: CheckoutResponse | null = await res.json().catch(() => null);
+    const data = await res.json().catch(() => null);
     if (!res.ok || !data?.ok) {
       setError(data?.error ?? "Échec de l'initialisation du paiement");
       return;
     }
-    if (data.mode === "cinetpay" && data.paymentUrl) {
-      // Redirection vers la caisse CinetPay (Mobile Money + cartes)
-      window.location.href = data.paymentUrl;
-      return;
-    }
-    // Modes sans redirection (gratuit ou démo)
-    setCheckout(null);
-    setSuccess(
-      data.mode === "demo"
-        ? `Mode démo : abonnement ${checkout.name} activé jusqu'au ${new Date(data.endsAt!).toLocaleDateString("fr-FR")} (aucun débit). Configurez les clés CinetPay pour encaisser réellement.`
-        : `Abonnement gratuit activé jusqu'au ${new Date(data.endsAt!).toLocaleDateString("fr-FR")}.`
-    );
+    setSuccess(`Offre gratuite activée jusqu'au ${new Date(data.endsAt).toLocaleDateString("fr-FR")}.`);
     router.refresh();
   }
 
@@ -136,7 +74,14 @@ export function PlansClient({
       return;
     }
     setError(null);
-    setCheckout(plan);
+    setSuccess(null);
+    if (plan.id === "GRATUIT") {
+      void activateFreePlan();
+      return;
+    }
+    const cycleName = cycle === "monthly" ? "mensuelle" : "annuelle";
+    const message = `Bonjour Stockkonect, je souhaite souscrire à l'offre ${plan.name} (${cycleName}) pour l'entreprise ${organizationName}. Merci de m'indiquer la procédure de paiement.`;
+    window.open(`https://wa.me/2250748323191?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -153,14 +98,8 @@ export function PlansClient({
       {success && (
         <div className="mt-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div>
       )}
-      {error && !checkout && (
+      {error && (
         <div className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
-      )}
-      {pending && (
-        <div className="mt-4 flex items-center gap-3 rounded-lg bg-indigo-50 px-4 py-3 text-sm text-indigo-700">
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
-          Paiement en cours de confirmation (transaction {pending})…
-        </div>
       )}
 
       {/* Bascule mensuel / annuel */}
@@ -194,7 +133,7 @@ export function PlansClient({
         {PLANS.map((plan) => {
           const price = cycle === "monthly" ? plan.monthly : plan.yearly;
           const per = price === 0 ? "" : cycle === "monthly" ? "/mois" : "/an";
-          const isCurrent = plan.id === currentPlan && cycle === currentCycle;
+          const isCurrent = plan.id === currentPlan && (plan.id === "GRATUIT" || cycle === currentCycle);
           const blocked = userCount > plan.maxUsers;
           return (
             <div
@@ -240,11 +179,11 @@ export function PlansClient({
               <button
                 type="button"
                 className={`mt-6 w-full ${isCurrent ? "btn-secondary" : "btn-primary"}`}
-                disabled={!isAdmin || isCurrent}
+                disabled={!isAdmin || isCurrent || busy || (plan.id === "GRATUIT" && blocked)}
                 onClick={() => pick(plan)}
                 title={!isAdmin ? "Seul un administrateur peut changer l'abonnement" : undefined}
               >
-                {isCurrent ? "Offre actuelle" : blocked ? "Utilisateurs trop nombreux" : plan.id === "GRATUIT" ? "Revenir au gratuit" : "Choisir cette offre"}
+                {isCurrent ? "Offre actuelle" : blocked ? "Utilisateurs trop nombreux" : plan.id === "GRATUIT" ? (busy ? "Activation…" : "Revenir au gratuit") : "Choisir cette offre"}
               </button>
             </div>
           );
@@ -324,38 +263,6 @@ export function PlansClient({
         )}
       </section>
 
-      {/* Modal de confirmation avant paiement */}
-      <Modal open={!!checkout} onClose={() => setCheckout(null)} title="Paiement sécurisé">
-        {checkout && (
-          <div className="space-y-4">
-            <div className="rounded-lg bg-slate-50 p-4">
-              <p className="flex items-center gap-2 font-semibold">
-                <Sparkles className="h-4 w-4 text-amber-500" />
-                Offre {checkout.name} — {cycle === "monthly" ? "mensuel" : "annuel"}
-              </p>
-              <p className="mt-1 text-2xl font-bold">
-                {fmt(cycle === "monthly" ? checkout.monthly : checkout.yearly)}
-              </p>
-            </div>
-            {error && (
-              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
-            )}
-            <p className="text-sm text-slate-600">
-              Vous serez redirigé vers la plateforme sécurisée <strong>CinetPay</strong> pour régler par
-              Mobile Money (Orange, MTN, Moov, Wave) ou carte bancaire. Vous reviendrez automatiquement
-              sur Stockkonect une fois le paiement effectué.
-            </p>
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button type="button" className="btn-secondary" onClick={() => setCheckout(null)}>
-                Annuler
-              </button>
-              <button type="button" className="btn-primary" onClick={activate} disabled={busy}>
-                {busy ? "Redirection…" : `Payer ${fmt(cycle === "monthly" ? checkout.monthly : checkout.yearly)}`}
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 }

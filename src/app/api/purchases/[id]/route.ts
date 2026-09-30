@@ -15,47 +15,49 @@ export async function PATCH(
     return NextResponse.json({ error: "Action non supportée" }, { status: 400 });
   }
 
-  const purchase = await db.purchase.findFirst({
-    where: { id, organizationId: user.organizationId },
-    include: { items: true },
-  });
+  const purchase = await db.purchase.findFirst({ where: { id, organizationId: user.organizationId } });
   if (!purchase) return NextResponse.json({ error: "Approvisionnement introuvable" }, { status: 404 });
   if (purchase.status === "CANCELLED") {
-    return NextResponse.json({ error: "Déjà annulé" }, { status: 400 });
+    return NextResponse.json({ ok: true, alreadyCancelled: true });
   }
 
-  await db.$transaction(async (tx) => {
-    await tx.purchase.update({
-      where: { id: purchase.id },
-      data: { status: "CANCELLED" },
-    });
-    for (const item of purchase.items) {
-      const product = await tx.product.findFirst({
-        where: { id: item.productId, organizationId: user.organizationId },
+  try {
+    await db.$transaction(async (tx) => {
+      const claimed = await tx.purchase.updateMany({
+        where: { id: purchase.id, organizationId: user.organizationId, status: "COMPLETED" },
+        data: { status: "CANCELLED" },
       });
-      if (!product) continue;
-      if (product.quantity < item.quantity) {
-        return NextResponse.json(
-          { error: "Annulation impossible : stock déjà consommé" },
-          { status: 400 }
-        );
+      if (claimed.count !== 1) throw new Error("ALREADY_CANCELLED");
+      const items = await tx.purchaseItem.findMany({ where: { purchaseId: purchase.id } });
+      const quantities = new Map<string, number>();
+      for (const item of items) quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + item.quantity);
+      for (const [productId, quantity] of quantities) {
+        const changed = await tx.product.updateMany({
+          where: { id: productId, organizationId: user.organizationId, quantity: { gte: quantity } },
+          data: { quantity: { decrement: quantity } },
+        });
+        if (changed.count !== 1) throw new Error("INSUFFICIENT_STOCK");
+        await tx.stockMovement.create({
+          data: {
+            type: "OUT",
+            quantity,
+            note: `Annulation approvisionnement ${purchase.reference}`,
+            productId,
+            userId: user.id,
+            organizationId: user.organizationId,
+          },
+        });
       }
-      await tx.product.update({
-        where: { id: item.productId },
-        data: { quantity: { decrement: item.quantity } },
-      });
-      await tx.stockMovement.create({
-        data: {
-          type: "OUT",
-          quantity: item.quantity,
-          note: `Annulation approvisionnement ${purchase.reference}`,
-          productId: item.productId,
-          userId: user.id,
-          organizationId: user.organizationId,
-        },
-      });
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
+      return NextResponse.json({ error: "Annulation impossible : stock déjà consommé" }, { status: 400 });
     }
-  });
+    if (error instanceof Error && error.message === "ALREADY_CANCELLED") {
+      return NextResponse.json({ ok: true, alreadyCancelled: true });
+    }
+    throw error;
+  }
 
   return NextResponse.json({ ok: true });
 }

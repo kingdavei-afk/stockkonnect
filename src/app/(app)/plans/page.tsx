@@ -35,10 +35,10 @@ export default async function PlansPage() {
     <Suspense fallback={null}>
       <PlansClient
         isAdmin={user.role === "ADMIN"}
+        organizationName={user.organization.name}
         currentPlan={org?.plan ?? "GRATUIT"}
         currentCycle={(org?.billingCycle as "monthly" | "yearly" | null) ?? null}
         userCount={org?._count.users ?? 1}
-        currency={user.organization.settings?.currency ?? "XOF"}
         payments={payments.map((p) => ({
           id: p.id,
           transactionId: p.transactionId,

@@ -49,32 +49,31 @@ export async function POST(req: NextRequest) {
     );
   }
   const { customerId, items } = parsed.data;
+  const quantities = new Map<string, number>();
+  for (const item of items) quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + item.quantity);
 
-  const productIds = items.map((i) => i.productId);
-  const products = await db.product.findMany({
-    where: { id: { in: productIds }, organizationId: user.organizationId },
-  });
-  const byId = new Map(products.map((p) => [p.id, p]));
-
-  for (const item of items) {
-    const p = byId.get(item.productId);
-    if (!p) {
-      return NextResponse.json({ error: "Produit introuvable" }, { status: 404 });
+  try {
+    const sale = await db.$transaction(async (tx) => {
+    if (customerId && !(await tx.customer.count({ where: { id: customerId, organizationId: user.organizationId } }))) {
+      throw new Error("REFERENCE_NOT_FOUND");
     }
-    if (p.quantity < item.quantity) {
-      return NextResponse.json(
-        { error: `Stock insuffisant pour « ${p.name} » (disponible : ${p.quantity})` },
-        { status: 400 }
-      );
+    const products = await tx.product.findMany({
+      where: { id: { in: [...quantities.keys()] }, organizationId: user.organizationId },
+    });
+    const byId = new Map(products.map((p) => [p.id, p]));
+    if (byId.size !== quantities.size) throw new Error("REFERENCE_NOT_FOUND");
+
+    let total = 0;
+    for (const [productId, quantity] of quantities) {
+      const product = byId.get(productId)!;
+      total += product.price * quantity;
+      const changed = await tx.product.updateMany({
+        where: { id: productId, organizationId: user.organizationId, quantity: { gte: quantity } },
+        data: { quantity: { decrement: quantity } },
+      });
+      if (changed.count !== 1) throw new Error(`INSUFFICIENT_STOCK:${product.name}`);
     }
-  }
 
-  const total = items.reduce((sum, i) => {
-    const p = byId.get(i.productId)!;
-    return sum + p.price * i.quantity;
-  }, 0);
-
-  const sale = await db.$transaction(async (tx) => {
     const created = await tx.sale.create({
       data: {
         reference: makeRef("VTE"),
@@ -83,25 +82,21 @@ export async function POST(req: NextRequest) {
         customerId: customerId || null,
         organizationId: user.organizationId,
         items: {
-          create: items.map((i) => ({
-            productId: i.productId,
-            quantity: i.quantity,
-            unitPrice: byId.get(i.productId)!.price,
+          create: [...quantities].map(([productId, quantity]) => ({
+            productId,
+            quantity,
+            unitPrice: byId.get(productId)!.price,
           })),
         },
       },
     });
-    for (const i of items) {
-      await tx.product.update({
-        where: { id: i.productId },
-        data: { quantity: { decrement: i.quantity } },
-      });
+    for (const [productId, quantity] of quantities) {
       await tx.stockMovement.create({
         data: {
           type: "OUT",
-          quantity: i.quantity,
+          quantity,
           note: `Vente ${created.reference}`,
-          productId: i.productId,
+          productId,
           userId: user.id,
           organizationId: user.organizationId,
         },
@@ -110,5 +105,13 @@ export async function POST(req: NextRequest) {
     return created;
   });
 
-  return NextResponse.json(sale, { status: 201 });
+    return NextResponse.json(sale, { status: 201 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "REFERENCE_NOT_FOUND") return NextResponse.json({ error: "Client ou produit introuvable" }, { status: 404 });
+    if (message.startsWith("INSUFFICIENT_STOCK:")) {
+      return NextResponse.json({ error: `Stock insuffisant pour « ${message.slice("INSUFFICIENT_STOCK:".length)} »` }, { status: 400 });
+    }
+    throw error;
+  }
 }

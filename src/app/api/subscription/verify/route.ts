@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { checkPayment, isConfigured } from "@/lib/cinetpay";
-import { activateSubscription } from "@/lib/subscription";
-import type { PlanId } from "@/lib/plans";
+import { settlePayment } from "@/lib/settle-payment";
 
 /**
  * Polling côté client après le retour de CinetPay (return_url /plans).
@@ -33,34 +32,9 @@ export async function GET(req: NextRequest) {
   const check = await checkPayment(transactionId);
   if (!check.ok) return NextResponse.json({ status: payment.status });
 
-  if (check.status === "SUCCESS" && payment.status !== "SUCCESS") {
-    if (check.amount != null && Math.round(check.amount) !== Math.round(payment.amount)) {
-      await db.payment.update({ where: { id: payment.id }, data: { status: "FAILED" } });
-      return NextResponse.json({ status: "FAILED", error: "Montant incohérent" });
-    }
-    try {
-      await activateSubscription(payment.organizationId, payment.planId as PlanId, payment.cycle as "monthly" | "yearly");
-      await db.payment.update({
-        where: { id: payment.id },
-        data: { status: "SUCCESS", providerMethod: check.method, paidAt: check.paidAt ?? new Date() },
-      });
-      return NextResponse.json({ status: "SUCCESS" });
-    } catch (e) {
-      await db.payment.update({ where: { id: payment.id }, data: { status: "FAILED" } });
-      return NextResponse.json({ status: "FAILED", error: e instanceof Error ? e.message : "Échec d'activation" });
-    }
+  const status = await settlePayment(transactionId, check);
+  if (status === "FAILED") {
+    return NextResponse.json({ status, error: check.status === "EXPIRED" ? "Paiement expiré" : check.status === "SUCCESS" ? "Échec de validation ou d'activation" : "Paiement refusé" });
   }
-
-  if (
-    (check.status === "FAILED" || check.status === "EXPIRED" || check.status === "INSUFFICIENT_BALANCE") &&
-    payment.status === "PENDING"
-  ) {
-    await db.payment.update({
-      where: { id: payment.id },
-      data: { status: "FAILED", metadata: JSON.stringify({ status: check.status }) },
-    });
-    return NextResponse.json({ status: "FAILED", error: check.status === "EXPIRED" ? "Paiement expiré" : "Paiement refusé" });
-  }
-
-  return NextResponse.json({ status: payment.status });
+  return NextResponse.json({ status });
 }

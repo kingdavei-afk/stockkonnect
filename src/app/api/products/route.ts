@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { referencesBelongToOrganization } from "@/lib/organization-refs";
 
 const productSchema = z.object({
   name: z.string().min(1, "Nom requis"),
@@ -58,6 +59,10 @@ export async function POST(req: NextRequest) {
   }
   const data = parsed.data;
 
+  if (!(await referencesBelongToOrganization(db, user.organizationId, data))) {
+    return NextResponse.json({ error: "Catégorie ou fournisseur introuvable" }, { status: 404 });
+  }
+
   const duplicate = await db.product.findFirst({
     where: { organizationId: user.organizationId, sku: data.sku },
   });
@@ -65,30 +70,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Ce SKU existe déjà" }, { status: 409 });
   }
 
-  const product = await db.product.create({
-    data: {
-      ...data,
-      barcode: data.barcode || null,
-      description: data.description || null,
-      image: data.image || null,
-      categoryId: data.categoryId || null,
-      supplierId: data.supplierId || null,
-      organizationId: user.organizationId,
-    },
-  });
-
-  if (data.quantity > 0) {
-    await db.stockMovement.create({
+  const product = await db.$transaction(async (tx) => {
+    const created = await tx.product.create({
       data: {
-        type: "IN",
-        quantity: data.quantity,
-        note: "Stock initial",
-        productId: product.id,
-        userId: user.id,
+        ...data,
+        barcode: data.barcode || null,
+        description: data.description || null,
+        image: data.image || null,
+        categoryId: data.categoryId || null,
+        supplierId: data.supplierId || null,
         organizationId: user.organizationId,
       },
     });
-  }
+
+    if (data.quantity > 0) {
+      await tx.stockMovement.create({
+        data: {
+          type: "IN",
+          quantity: data.quantity,
+          note: "Stock initial",
+          productId: created.id,
+          userId: user.id,
+          organizationId: user.organizationId,
+        },
+      });
+    }
+    return created;
+  });
 
   return NextResponse.json(product, { status: 201 });
 }

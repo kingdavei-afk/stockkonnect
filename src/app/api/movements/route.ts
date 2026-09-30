@@ -49,31 +49,37 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  if (type === "OUT" && quantity > product.quantity) {
-    return NextResponse.json(
-      { error: `Stock insuffisant (disponible : ${product.quantity})` },
-      { status: 400 }
-    );
-  }
-
   const delta = type === "IN" ? quantity : type === "OUT" ? -quantity : quantity;
-
-  const [movement] = await db.$transaction([
-    db.product.update({
-      where: { id: product.id },
-      data: { quantity: { increment: delta } },
-    }),
-    db.stockMovement.create({
-      data: {
-        type,
-        quantity: type === "ADJUST" ? delta : quantity,
-        note: note || null,
-        productId: product.id,
-        userId: user.id,
-        organizationId: user.organizationId,
-      },
-    }),
-  ]);
-
-  return NextResponse.json(movement, { status: 201 });
+  try {
+    const movement = await db.$transaction(async (tx) => {
+      const changed = await tx.product.updateMany({
+        where: {
+          id: product.id,
+          organizationId: user.organizationId,
+          ...(delta < 0 ? { quantity: { gte: -delta } } : {}),
+        },
+        data: { quantity: { increment: delta } },
+      });
+      if (changed.count !== 1) throw new Error("INSUFFICIENT_STOCK");
+      return tx.stockMovement.create({
+        data: {
+          type,
+          quantity: type === "ADJUST" ? delta : quantity,
+          note: note || null,
+          productId: product.id,
+          userId: user.id,
+          organizationId: user.organizationId,
+        },
+      });
+    });
+    return NextResponse.json(movement, { status: 201 });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
+      return NextResponse.json(
+        { error: `Stock insuffisant (disponible : ${product.quantity})` },
+        { status: 400 }
+      );
+    }
+    throw error;
+  }
 }

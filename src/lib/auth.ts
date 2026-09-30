@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { db } from "./db";
 import { SESSION_COOKIE, signSession, verifySession } from "./jwt";
 import type { SessionPayload } from "./jwt";
+import { getPlan } from "./plans";
 
 type UserWithOrg = Prisma.UserGetPayload<{
   include: { organization: { include: { settings: true } } };
@@ -30,6 +31,38 @@ export async function getSessionUser(): Promise<OrgUser | null> {
     include: { organization: { include: { settings: true } } },
   });
   if (!user || !user.organization || user.organization.status === "SUSPENDED") return null;
+  const now = new Date();
+  if (
+    user.organization.planEndsAt &&
+    user.organization.planEndsAt <= now &&
+    ["PRO", "BUSINESS"].includes(user.organization.plan)
+  ) {
+    const free = getPlan("GRATUIT");
+    const expired = await db.organization.updateMany({
+      where: {
+        id: user.organization.id,
+        plan: { in: ["PRO", "BUSINESS"] },
+        planEndsAt: { lte: now },
+      },
+      data: {
+        plan: free.id,
+        billingCycle: null,
+        planStartsAt: now,
+        planEndsAt: null,
+        maxUsers: free.maxUsers,
+        maxProducts: free.maxProducts,
+        trialEndsAt: null,
+      },
+    });
+    if (expired.count > 0) {
+      const refreshed = await db.user.findUnique({
+        where: { id: user.id },
+        include: { organization: { include: { settings: true } } },
+      });
+      if (!refreshed || !refreshed.organization || refreshed.organization.status === "SUSPENDED") return null;
+      return refreshed as OrgUser;
+    }
+  }
   return user as OrgUser;
 }
 

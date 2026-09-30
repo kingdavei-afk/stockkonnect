@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { checkPayment, tokensMatch } from "@/lib/cinetpay";
-import { activateSubscription } from "@/lib/subscription";
-import type { PlanId } from "@/lib/plans";
+import { settlePayment } from "@/lib/settle-payment";
 
 /**
  * Webhook serveur-à-serveur CinetPay v1 (notify_url).
@@ -65,63 +64,12 @@ async function processPayment(transactionId: string, notifyToken: string | null)
   } catch {
     expected = null;
   }
-  if (expected && !tokensMatch(expected, notifyToken)) {
-    await db.payment.update({
-      where: { id: payment.id },
-      data: { metadata: JSON.stringify({ error: "WEBHOOK_TOKEN_MISMATCH" }) },
-    }).catch(() => undefined);
+  if (!expected || !tokensMatch(expected, notifyToken)) {
     return;
   }
 
   const check = await checkPayment(payment.transactionId);
   if (!check.ok) return; // CinetPay injoignable : un nouveau webhook/verify retentera
 
-  if (check.status === "SUCCESS" && payment.status !== "SUCCESS") {
-    // Sécurité : vérifier que le montant payé correspond à la commande (si l'API le renvoie)
-    if (check.amount != null && Math.round(check.amount) !== Math.round(payment.amount)) {
-      await db.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: "FAILED",
-          providerMethod: check.method,
-          metadata: JSON.stringify({ error: "AMOUNT_MISMATCH", expected: payment.amount, received: check.amount }),
-        },
-      });
-      return;
-    }
-    try {
-      const result = await activateSubscription(
-        payment.organizationId,
-        payment.planId as PlanId,
-        payment.cycle as "monthly" | "yearly"
-      );
-      await db.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: "SUCCESS",
-          providerMethod: check.method,
-          paidAt: check.paidAt ?? new Date(),
-          metadata: JSON.stringify({ endsAt: result.endsAt.toISOString() }),
-        },
-      });
-    } catch (e) {
-      // ex. limite d'utilisateurs dépassée : échec enregistré, remboursement manuel
-      await db.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: "FAILED",
-          providerMethod: check.method,
-          metadata: JSON.stringify({ error: "ACTIVATION_FAILED", message: e instanceof Error ? e.message : "erreur" }),
-        },
-      });
-    }
-  } else if (
-    (check.status === "FAILED" || check.status === "EXPIRED" || check.status === "INSUFFICIENT_BALANCE") &&
-    payment.status === "PENDING"
-  ) {
-    await db.payment.update({
-      where: { id: payment.id },
-      data: { status: "FAILED", providerMethod: check.method, metadata: JSON.stringify({ status: check.status }) },
-    });
-  }
+  await settlePayment(transactionId, check);
 }

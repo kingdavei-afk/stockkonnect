@@ -21,6 +21,10 @@ export default async function AdminPage() {
         slug: true,
         plan: true,
         maxUsers: true,
+        maxProducts: true,
+        billingCycle: true,
+        planEndsAt: true,
+        trialEndsAt: true,
         status: true,
         createdAt: true,
         _count: { select: { users: true, products: true, sales: true } },
@@ -60,7 +64,12 @@ export default async function AdminPage() {
   return (
     <AdminShell userName={account.name} logout={<LogoutButton />}>
       <AdminClient
-        orgs={orgs.map((o) => ({ ...o, createdAt: o.createdAt.toISOString() }))}
+        orgs={orgs.map((o) => ({
+          ...o,
+          createdAt: o.createdAt.toISOString(),
+          planEndsAt: o.planEndsAt?.toISOString() ?? null,
+          trialEndsAt: o.trialEndsAt?.toISOString() ?? null,
+        }))}
         payments={payments.map((p) => ({
           id: p.id,
           transactionId: p.transactionId,

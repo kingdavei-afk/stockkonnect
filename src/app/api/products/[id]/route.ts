@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { referencesBelongToOrganization } from "@/lib/organization-refs";
 
 const updateSchema = z.object({
   name: z.string().min(1, "Nom requis"),
@@ -40,6 +41,10 @@ export async function PATCH(
     );
   }
   const data = parsed.data;
+
+  if (!(await referencesBelongToOrganization(db, user.organizationId, data))) {
+    return NextResponse.json({ error: "Catégorie ou fournisseur introuvable" }, { status: 404 });
+  }
 
   const duplicate = await db.product.findFirst({
     where: { organizationId: user.organizationId, sku: data.sku, id: { not: id } },
