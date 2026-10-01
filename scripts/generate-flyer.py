@@ -7,6 +7,9 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader, simpleSplit
+from reportlab.graphics import renderPDF
+from reportlab.graphics.barcode.qr import QrCodeWidget
+from reportlab.graphics.shapes import Drawing
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +27,7 @@ PALE = colors.HexColor("#F5F6FA")
 LINE = colors.HexColor("#E4E7EF")
 GREEN = colors.HexColor("#119B70")
 WHITE = colors.white
+SITE_URL = "https://stockkonnect.vercel.app"
 
 
 def rounded(c, x, y, w, h, fill, radius=10, stroke=None):
@@ -48,6 +52,24 @@ def pill(c, label, x, y, *, fill=INDIGO_LIGHT, color=INDIGO, size=7.2, px=9, py=
     c.setFont("Helvetica-Bold", size)
     c.drawString(x + px, y + py, label)
     return width
+
+
+def draw_qr_code(c, x, y, size):
+    qr = QrCodeWidget(
+        SITE_URL,
+        barLevel="H",
+        barBorder=4,
+        barFillColor=colors.black,
+        barWidth=size,
+        barHeight=size,
+    )
+    drawing = Drawing(size, size)
+    drawing.add(qr)
+    c.saveState()
+    c.setFillColor(WHITE)
+    c.roundRect(x - 2, y - 2, size + 4, size + 4, 4, stroke=0, fill=1)
+    renderPDF.draw(drawing, c, x, y)
+    c.restoreState()
 
 
 def dashboard_mockup(c, x, y, w, h):
@@ -263,8 +285,13 @@ def draw_flyer(c):
     c.drawString(58, 83, "Prêt à mieux gérer votre stock ?")
     c.setFont("Helvetica", 7.5)
     c.drawString(58, 65, "Contactez-nous sur WhatsApp : +225 07 48 32 31 91")
-    c.drawRightString(W - 59, 65, "stockkonnect.vercel.app")
-    c.linkURL("https://stockkonnect.vercel.app", (W - 188, 57, W - 59, 76), relative=0, thickness=0)
+    qr_size, qr_x, qr_y = 35, W - 50 - 35, 57
+    c.setFont("Helvetica-Bold", 6.4)
+    c.drawRightString(qr_x - 9, 80, "Scannez pour visiter")
+    c.setFont("Helvetica", 6)
+    c.drawRightString(qr_x - 9, 65, "stockkonnect.vercel.app")
+    draw_qr_code(c, qr_x, qr_y, qr_size)
+    c.linkURL(SITE_URL, (qr_x - 125, 55, qr_x + qr_size + 3, 98), relative=0, thickness=0)
     c.showPage()
     c.save()
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { activateSubscription } from "@/lib/subscription";
+import { blockDemoWrites } from "@/lib/demo-access";
 
 const schema = z.object({
   planId: z.enum(["GRATUIT", "STARTER", "PRO", "BUSINESS"]),
@@ -12,6 +13,8 @@ const schema = z.object({
 export async function POST(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  const demoBlocked = blockDemoWrites(user);
+  if (demoBlocked) return demoBlocked;
   if (user.role !== "ADMIN") {
     return NextResponse.json({ error: "Seul un administrateur peut gérer l'abonnement" }, { status: 403 });
   }

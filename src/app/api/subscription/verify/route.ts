@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { checkPayment, isConfigured } from "@/lib/cinetpay";
 import { settlePayment } from "@/lib/settle-payment";
+import { blockDemoWrites } from "@/lib/demo-access";
 
 /**
  * Polling côté client après le retour de CinetPay (return_url /plans).
@@ -12,6 +13,8 @@ import { settlePayment } from "@/lib/settle-payment";
 export async function GET(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  const demoBlocked = blockDemoWrites(user);
+  if (demoBlocked) return demoBlocked;
 
   const transactionId = req.nextUrl.searchParams.get("transaction");
   if (!transactionId) return NextResponse.json({ error: "transaction manquante" }, { status: 400 });

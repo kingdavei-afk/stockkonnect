@@ -1,21 +1,73 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { loadEnvConfig } from "@next/env";
+
+// Charge notamment .env.production.local après un `vercel env pull`.
+loadEnvConfig(process.cwd());
 
 const db = new PrismaClient();
 
+async function seedSuperAdmin() {
+  const email = process.env.SUPERADMIN_BOOTSTRAP_EMAIL?.trim().toLowerCase();
+  const password = process.env.SUPERADMIN_BOOTSTRAP_PASSWORD;
+  const resetExisting = process.env.SUPERADMIN_BOOTSTRAP_RESET === "true";
+
+  if (!email && !password) {
+    const existing = await db.user.count({ where: { role: "SUPER_ADMIN" } });
+    if (!existing && process.env.NODE_ENV === "production") {
+      throw new Error(
+        "Aucun super-admin n'existe. Définissez SUPERADMIN_BOOTSTRAP_EMAIL et SUPERADMIN_BOOTSTRAP_PASSWORD pour le premier provisionnement."
+      );
+    }
+    if (existing) console.log("Super-admin existant conservé (aucun identifiant affiché).");
+    else console.log("Provisionnement du super-admin ignoré en développement.");
+    return;
+  }
+
+  if (!email || !password) {
+    throw new Error("Les variables SUPERADMIN_BOOTSTRAP_EMAIL et SUPERADMIN_BOOTSTRAP_PASSWORD doivent être définies ensemble.");
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new Error("SUPERADMIN_BOOTSTRAP_EMAIL doit être une adresse valide.");
+  }
+  if (password.length < 16) {
+    throw new Error("SUPERADMIN_BOOTSTRAP_PASSWORD doit contenir au moins 16 caractères.");
+  }
+
+  const existing = await db.user.findUnique({ where: { email } });
+  if (existing && existing.role !== "SUPER_ADMIN") {
+    throw new Error("L'adresse de provisionnement existe déjà sans le rôle SUPER_ADMIN.");
+  }
+
+  if (existing && !resetExisting) {
+    console.log("Super-admin de provisionnement déjà présent ; compte conservé sans modification.");
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  if (existing) {
+    await db.user.update({ where: { id: existing.id }, data: { passwordHash } });
+    console.log("Mot de passe du super-admin réinitialisé depuis la variable de provisionnement.");
+    return;
+  }
+
+  await db.user.create({
+    data: {
+      email,
+      name: "Super Admin",
+      passwordHash,
+      role: "SUPER_ADMIN",
+      organizationId: null,
+    },
+  });
+  console.log("Compte super-admin de provisionnement créé (mot de passe non affiché).");
+}
+
 async function main() {
-  // Compte plateforme (super-admin), sans entreprise — créé en premier, indépendamment de la démo
-  if (!(await db.user.findUnique({ where: { email: "admin@stockkonect.fr" } }))) {
-    await db.user.create({
-      data: {
-        email: "admin@stockkonect.fr",
-        name: "Super Admin",
-        passwordHash: await bcrypt.hash("super1234", 10),
-        role: "SUPER_ADMIN",
-        organizationId: null,
-      },
-    });
-    console.log("Super-admin créé : admin@stockkonect.fr / super1234");
+  await seedSuperAdmin();
+  if (process.env.SUPERADMIN_ONLY === "true") {
+    console.log("Mode super-admin uniquement terminé.");
+    return;
   }
 
   const email = "demo@stockkonect.fr";
@@ -97,7 +149,6 @@ async function main() {
   }
 
   console.log("Base de démonstration créée.");
-  console.log("Connexion : demo@stockkonect.fr / demo1234");
 }
 
 main()

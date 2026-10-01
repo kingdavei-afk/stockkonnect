@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "postinstall": "prisma generate",
-    "build": "next build --turbopack",
+    "build": "node scripts/build.mjs",
     "start": "next start",
     "lint": "eslint",
     "db:seed": "tsx prisma/seed.ts"

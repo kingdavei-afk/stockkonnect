@@ -72,8 +72,8 @@ Sécurité : le webhook ne fait jamais confiance au POST reçu — le `notify_to
    - `DATABASE_URL` : votre chaîne Neon/Supabase (utilisez la **pooled connection** Neon pour de meilleures perfs serverless)
    - `AUTH_SECRET` : une chaîne aléatoire (`openssl rand -base64 32`)
 3. **Redeploy** (les variables ne s'appliquent qu'aux nouveaux déploiements)
-4. Créez les tables : en local avec le même `DATABASE_URL` dans `.env`, lancez `npx prisma migrate deploy`
-5. (Optionnel) données de démo : `npm run db:seed` avec la même URL
+4. Les déploiements Vercel de production appliquent les migrations Prisma en attente avant le build. Les builds locaux et de prévisualisation ne migrent pas la base de production.
+5. (Optionnel) données de démo : `npm run db:seed` en local uniquement.
 
 > ⚠️ Sur Vercel, le système de fichiers est en lecture seule : l'upload d'images renvoie des **data URLs** stockées en base. Pour de gros volumes, passez à un stockage objet (S3, Cloudinary).
 

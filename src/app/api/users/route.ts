@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getSessionUser, isAdmin } from "@/lib/auth";
+import { blockDemoWrites } from "@/lib/demo-access";
 
 const createSchema = z.object({
   name: z.string().min(2, "Nom trop court"),
@@ -32,6 +33,8 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  const demoBlocked = blockDemoWrites(user);
+  if (demoBlocked) return demoBlocked;
   if (user.role !== "ADMIN") {
     return NextResponse.json({ error: "Seul un administrateur peut inviter des utilisateurs" }, { status: 403 });
   }
@@ -68,6 +71,8 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  const demoBlocked = blockDemoWrites(user);
+  if (demoBlocked) return demoBlocked;
   if (user.role !== "ADMIN") {
     return NextResponse.json({ error: "Seul un administrateur peut modifier les utilisateurs" }, { status: 403 });
   }
@@ -112,6 +117,8 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  const demoBlocked = blockDemoWrites(user);
+  if (demoBlocked) return demoBlocked;
   if (user.role !== "ADMIN") {
     return NextResponse.json({ error: "Seul un administrateur peut supprimer des utilisateurs" }, { status: 403 });
   }

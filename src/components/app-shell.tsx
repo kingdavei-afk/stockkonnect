@@ -115,12 +115,14 @@ export function AppShell({
   userName,
   organizationName,
   role,
+  readOnlyDemo,
   logout,
   children,
 }: {
   userName: string;
   organizationName: string;
   role: string;
+  readOnlyDemo?: boolean;
   logout: ReactNode;
   children: ReactNode;
 }) {
@@ -186,6 +188,11 @@ export function AppShell({
         )}
 
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          {readOnlyDemo && (
+            <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900" role="status">
+              Compte de démonstration en lecture seule : les modifications sont désactivées.
+            </div>
+          )}
           {children}
         </main>
       </div>

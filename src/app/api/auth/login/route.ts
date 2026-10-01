@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
     userId: user.id,
     orgId: user.organizationId ?? "",
     role: user.role,
+    sessionVersion: user.sessionVersion,
   });
   return NextResponse.json({ ok: true, role: user.role });
 }

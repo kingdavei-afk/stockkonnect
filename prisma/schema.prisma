@@ -11,6 +11,7 @@ model User {
   id             String        @id @default(cuid())
   email          String        @unique
   passwordHash   String
+  sessionVersion Int           @default(0)
   name           String
   role           String        @default("STAFF") // ADMIN | STAFF | SUPER_ADMIN
   organizationId String?

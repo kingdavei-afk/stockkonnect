@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function LoginForm() {
+export function LoginForm({ accountUpdated = false }: { accountUpdated?: boolean }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,6 +32,11 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+      {accountUpdated && (
+        <div className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700" role="status">
+          Vos accès ont été modifiés. Connectez-vous avec vos nouveaux identifiants.
+        </div>
+      )}
       {error && (
         <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
       )}

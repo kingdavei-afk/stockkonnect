@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { blockDemoWrites } from "@/lib/demo-access";
 
 const schema = z.object({ name: z.string().min(1, "Nom requis") });
 
@@ -18,6 +19,8 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  const demoBlocked = blockDemoWrites(user);
+  if (demoBlocked) return demoBlocked;
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json(

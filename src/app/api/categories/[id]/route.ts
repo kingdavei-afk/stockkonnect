@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { blockDemoWrites } from "@/lib/demo-access";
 
 const schema = z.object({ name: z.string().min(1, "Nom requis") });
 
@@ -11,6 +12,8 @@ export async function PATCH(
 ) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  const demoBlocked = blockDemoWrites(user);
+  if (demoBlocked) return demoBlocked;
   const { id } = await params;
 
   const existing = await db.category.findFirst({
@@ -35,6 +38,8 @@ export async function DELETE(
 ) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  const demoBlocked = blockDemoWrites(user);
+  if (demoBlocked) return demoBlocked;
   const { id } = await params;
 
   const existing = await db.category.findFirst({

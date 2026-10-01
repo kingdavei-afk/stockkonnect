@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { blockDemoWrites } from "@/lib/demo-access";
 
 const schema = z.object({
   organizationName: z.string().min(2, "Nom d'entreprise trop court"),
@@ -28,6 +29,8 @@ const clean = (v: string | undefined) => {
 export async function PATCH(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  const demoBlocked = blockDemoWrites(user);
+  if (demoBlocked) return demoBlocked;
   if (user.role !== "ADMIN") {
     return NextResponse.json({ error: "Seul un administrateur peut modifier les paramètres" }, { status: 403 });
   }

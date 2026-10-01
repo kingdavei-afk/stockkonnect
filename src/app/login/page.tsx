@@ -2,7 +2,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { LoginForm } from "./login-form";
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ accountUpdated?: string }>;
+}) {
+  const params = await searchParams;
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
       <div className="w-full max-w-md">
@@ -14,7 +19,7 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-slate-500">
             Accédez à votre espace de gestion de stock.
           </p>
-          <LoginForm />
+          <LoginForm accountUpdated={params.accountUpdated === "1"} />
           <p className="mt-6 text-center text-sm text-slate-500">
             Pas encore de compte ?{" "}
             <Link href="/register" className="font-medium text-indigo-600 hover:underline">

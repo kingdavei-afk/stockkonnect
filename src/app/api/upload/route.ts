@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
+import { blockDemoWrites } from "@/lib/demo-access";
 
 const ALLOWED = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 const MAX_SIZE = 4 * 1024 * 1024; // 4 Mo
@@ -13,6 +14,8 @@ const MAX_SIZE = 4 * 1024 * 1024; // 4 Mo
 export async function POST(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  const demoBlocked = blockDemoWrites(user);
+  if (demoBlocked) return demoBlocked;
 
   const form = await req.formData();
   const file = form.get("file");

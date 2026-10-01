@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { AdminClient } from "./admin-client";
 import { AdminShell } from "@/components/admin-shell";
 import { LogoutButton } from "@/components/logout-button";
+import { AdminAccountSettings } from "./account-settings";
 
 export default async function AdminPage() {
   const account = await getSessionAccount();
@@ -65,6 +66,7 @@ export default async function AdminPage() {
 
   return (
     <AdminShell userName={account.name} logout={<LogoutButton />}>
+      <AdminAccountSettings email={account.email} />
       <AdminClient
         orgs={orgs.map((o) => ({
           ...o,

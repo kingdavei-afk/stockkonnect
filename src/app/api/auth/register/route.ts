@@ -79,6 +79,6 @@ export async function POST(req: NextRequest) {
     where: { organizationId: org.id },
   });
 
-  await startSession({ userId: user.id, orgId: org.id, role: user.role });
+  await startSession({ userId: user.id, orgId: org.id, role: user.role, sessionVersion: user.sessionVersion });
   return NextResponse.json({ ok: true });
 }

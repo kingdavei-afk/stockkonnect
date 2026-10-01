@@ -30,7 +30,12 @@ export async function getSessionUser(): Promise<OrgUser | null> {
     where: { id: payload.userId },
     include: { organization: { include: { settings: true } } },
   });
-  if (!user || !user.organization || user.organization.status === "SUSPENDED") return null;
+  if (
+    !user ||
+    user.sessionVersion !== payload.sessionVersion ||
+    !user.organization ||
+    user.organization.status === "SUSPENDED"
+  ) return null;
   const now = new Date();
   if (
     user.organization.planEndsAt &&
@@ -59,7 +64,12 @@ export async function getSessionUser(): Promise<OrgUser | null> {
         where: { id: user.id },
         include: { organization: { include: { settings: true } } },
       });
-      if (!refreshed || !refreshed.organization || refreshed.organization.status === "SUSPENDED") return null;
+      if (
+        !refreshed ||
+        refreshed.sessionVersion !== payload.sessionVersion ||
+        !refreshed.organization ||
+        refreshed.organization.status === "SUSPENDED"
+      ) return null;
       return refreshed as OrgUser;
     }
   }
@@ -73,10 +83,12 @@ export async function getSessionAccount() {
   if (!token) return null;
   const payload = await verifySession(token);
   if (!payload) return null;
-  return db.user.findUnique({
+  const account = await db.user.findUnique({
     where: { id: payload.userId },
     include: { organization: { include: { settings: true } } },
   });
+  if (!account || account.sessionVersion !== payload.sessionVersion) return null;
+  return account;
 }
 
 export function isSuperAdmin(account: { role: string } | null): boolean {
