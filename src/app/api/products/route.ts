@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const count = await db.product.count({ where: { organizationId: user.organizationId } });
     if (count >= org.maxProducts) {
       return NextResponse.json(
-        { error: `Limite de ${org.maxProducts} produits atteinte avec l'offre ${org.plan === "PRO" ? "Pro" : "Gratuit"}. Passez à l'offre Business pour des produits illimités.` },
+        { error: `Limite de ${org.maxProducts} produits atteinte avec votre offre. Passez à l'offre supérieure pour augmenter votre capacité.` },
         { status: 402 }
       );
     }

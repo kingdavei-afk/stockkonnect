@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   });
   if (org && org._count.users >= org.maxUsers) {
     return NextResponse.json(
-      { error: `Limite de votre offre ${org.plan === "BUSINESS" ? "Business" : org.plan === "PRO" ? "Pro" : "Gratuit"} atteinte (${org.maxUsers} utilisateurs). Changez d'offre depuis les Paramètres.` },
+      { error: `Limite de votre offre ${org.plan === "BUSINESS" ? "Business" : org.plan === "PRO" ? "Pro" : org.plan === "STARTER" ? "Starter" : "Gratuit"} atteinte (${org.maxUsers} utilisateurs). Changez d'offre depuis les Paramètres.` },
       { status: 402 }
     );
   }

@@ -35,13 +35,13 @@ export async function getSessionUser(): Promise<OrgUser | null> {
   if (
     user.organization.planEndsAt &&
     user.organization.planEndsAt <= now &&
-    ["PRO", "BUSINESS"].includes(user.organization.plan)
+    ["STARTER", "PRO", "BUSINESS"].includes(user.organization.plan)
   ) {
     const free = getPlan("GRATUIT");
     const expired = await db.organization.updateMany({
       where: {
         id: user.organization.id,
-        plan: { in: ["PRO", "BUSINESS"] },
+        plan: { in: ["STARTER", "PRO", "BUSINESS"] },
         planEndsAt: { lte: now },
       },
       data: {

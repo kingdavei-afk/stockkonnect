@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Boxes, BarChart3, ScanBarcode, ArrowLeftRight, MessageCircle } from "lucide-react";
+import { Boxes, BarChart3, ScanBarcode, ArrowLeftRight, MessageCircle, BookOpen } from "lucide-react";
 
 const WHATSAPP_URL =
   "https://wa.me/2250748323191?text=" +
@@ -13,6 +13,20 @@ export default function LandingPage() {
           <Boxes className="h-7 w-7 text-indigo-400" />
           Stockkonect
         </div>
+        <nav aria-label="Navigation principale" className="flex flex-wrap items-center justify-center gap-1 sm:gap-2">
+          <Link href="/plans" className="btn text-slate-200 hover:bg-white/10 hover:text-white">
+            Nos Prix
+          </Link>
+          <a
+            href="/guide-stockkonect.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn flex items-center gap-2 text-slate-200 hover:bg-white/10 hover:text-white"
+          >
+            <BookOpen className="h-4 w-4" />
+            Apprendre StockKonect
+          </a>
+        </nav>
         <div className="flex flex-wrap items-center gap-3">
           <Link href="/login" className="btn text-white hover:bg-white/10">
             Se connecter

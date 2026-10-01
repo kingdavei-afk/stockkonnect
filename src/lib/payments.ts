@@ -14,6 +14,7 @@ export function paymentMethodLabel(method: string | null | undefined): string {
 }
 
 export function planLabel(planId: string | null | undefined): string {
+  if (planId === "STARTER") return "Starter";
   if (planId === "PRO") return "Pro";
   if (planId === "BUSINESS") return "Business";
   if (planId === "GRATUIT") return "Gratuit";

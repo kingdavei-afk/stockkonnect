@@ -22,7 +22,7 @@ model Organization {
   id           String   @id @default(cuid())
   name         String
   slug         String   @unique
-  plan         String   @default("FREE") // GRATUIT | PRO | BUSINESS
+  plan         String   @default("GRATUIT") // GRATUIT | STARTER | PRO | BUSINESS
   billingCycle String?  // monthly | yearly
   planStartsAt DateTime?
   planEndsAt   DateTime?

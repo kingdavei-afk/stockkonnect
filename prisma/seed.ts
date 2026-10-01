@@ -21,6 +21,19 @@ async function main() {
   const email = "demo@stockkonect.fr";
   const existing = await db.user.findUnique({ where: { email } });
   if (existing) {
+    if (existing.organizationId) {
+      await db.organization.update({
+        where: { id: existing.organizationId },
+        data: {
+          plan: "GRATUIT",
+          billingCycle: null,
+          planEndsAt: null,
+          trialEndsAt: null,
+          maxUsers: 2,
+          maxProducts: 10,
+        },
+      });
+    }
     console.log("Seed déjà appliqué (demo@stockkonect.fr existe).");
     return;
   }
@@ -31,6 +44,11 @@ async function main() {
     data: {
       name: "Demo SAS",
       slug: "demo-sas",
+      plan: "GRATUIT",
+      maxUsers: 2,
+      maxProducts: 10,
+      planEndsAt: null,
+      trialEndsAt: null,
       settings: { create: { currency: "EUR", lowStockThreshold: 5 } },
       users: {
         create: { email, name: "Utilisateur Démo", passwordHash, role: "ADMIN" },

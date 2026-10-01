@@ -33,7 +33,7 @@ export default async function UsersPage() {
     <UsersClient
       currentUserId={user.id}
       maxUsers={org?.maxUsers ?? 2}
-      plan={org?.plan ?? "FREE"}
+      plan={org?.plan ?? "GRATUIT"}
       users={users.map((u) => ({
         ...u,
         createdAt: u.createdAt.toISOString(),

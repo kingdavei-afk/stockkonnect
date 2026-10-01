@@ -36,7 +36,7 @@ export async function GET() {
 const patchSchema = z.object({
   id: z.string(),
   status: z.enum(["ACTIVE", "SUSPENDED"]).optional(),
-  planId: z.enum(["GRATUIT", "PRO", "BUSINESS"]).optional(),
+  planId: z.enum(["GRATUIT", "STARTER", "PRO", "BUSINESS"]).optional(),
   billingCycle: z.enum(["monthly", "yearly"]).optional(),
 }).refine((data) => data.status !== undefined || data.planId !== undefined, {
   message: "Aucune modification demandée",

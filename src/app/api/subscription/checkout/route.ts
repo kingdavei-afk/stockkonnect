@@ -5,7 +5,7 @@ import { getSessionUser } from "@/lib/auth";
 import { activateSubscription } from "@/lib/subscription";
 
 const schema = z.object({
-  planId: z.enum(["GRATUIT", "PRO", "BUSINESS"]),
+  planId: z.enum(["GRATUIT", "STARTER", "PRO", "BUSINESS"]),
   cycle: z.enum(["monthly", "yearly"]),
 });
 

@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Check, ChevronLeft, Download, Receipt } from "lucide-react";
-import { PLANS, type Plan } from "@/lib/plans";
+import { PUBLIC_PLANS, type Plan } from "@/lib/plans";
 import {
   cycleLabel,
   formatAmount,
@@ -26,47 +25,34 @@ export type PaymentRow = {
 
 export function PlansClient({
   isAdmin,
+  isPublic = false,
   organizationName,
   currentPlan,
   currentCycle,
   userCount,
   payments,
 }: {
-  isAdmin: boolean;
-  organizationName: string;
-  currentPlan: string;
+  isAdmin?: boolean;
+  isPublic?: boolean;
+  organizationName?: string;
+  currentPlan: string | null;
   currentCycle: "monthly" | "yearly" | null;
   userCount: number;
   payments: PaymentRow[];
 }) {
-  const router = useRouter();
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const fmt = (n: number) => (n === 0 ? "Gratuit" : `${n.toLocaleString("fr-FR")} F CFA`);
   const fmtProducts = (n: number | null) => (n === null ? "Produits illimités" : `${n} produits`);
 
-  async function activateFreePlan() {
-    setBusy(true);
-    setError(null);
-    const res = await fetch("/api/subscription/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ planId: "GRATUIT", cycle }),
-    });
-    setBusy(false);
-    const data = await res.json().catch(() => null);
-    if (!res.ok || !data?.ok) {
-      setError(data?.error ?? "Échec de l'initialisation du paiement");
+  function pick(plan: Plan) {
+    if (isPublic) {
+      const cycleName = cycle === "monthly" ? "mensuelle" : "annuelle";
+      const message = `Bonjour Stockkonect, je souhaite souscrire à l'offre ${plan.name} (${cycleName}). Merci de m'indiquer la procédure de paiement.`;
+      window.open(`https://wa.me/2250748323191?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
       return;
     }
-    setSuccess(`Offre gratuite activée jusqu'au ${new Date(data.endsAt).toLocaleDateString("fr-FR")}.`);
-    router.refresh();
-  }
-
-  function pick(plan: Plan) {
     if (!isAdmin) return;
     if (plan.id === currentPlan && cycle === currentCycle) return;
     if (userCount > plan.maxUsers) {
@@ -74,11 +60,6 @@ export function PlansClient({
       return;
     }
     setError(null);
-    setSuccess(null);
-    if (plan.id === "GRATUIT") {
-      void activateFreePlan();
-      return;
-    }
     const cycleName = cycle === "monthly" ? "mensuelle" : "annuelle";
     const message = `Bonjour Stockkonect, je souhaite souscrire à l'offre ${plan.name} (${cycleName}) pour l'entreprise ${organizationName}. Merci de m'indiquer la procédure de paiement.`;
     window.open(`https://wa.me/2250748323191?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
@@ -86,18 +67,15 @@ export function PlansClient({
 
   return (
     <div>
-      <Link href="/settings" className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+      <Link href={isPublic ? "/" : "/settings"} className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
         <ChevronLeft className="h-4 w-4" />
-        Retour aux paramètres
+        {isPublic ? "Retour à l'accueil" : "Retour aux paramètres"}
       </Link>
-      <h1 className="text-2xl font-bold">Options d&apos;abonnement</h1>
+      <h1 className="text-2xl font-bold">{isPublic ? "Nos prix" : "Options d'abonnement"}</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Choisissez l&apos;offre adaptée à votre entreprise. Changez ou annulez à tout moment.
+        Choisissez l&apos;offre adaptée à votre entreprise.{!isPublic && " Changez ou annulez à tout moment."}
       </p>
 
-      {success && (
-        <div className="mt-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div>
-      )}
       {error && (
         <div className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
       )}
@@ -130,11 +108,11 @@ export function PlansClient({
 
       {/* Cartes d'offres */}
       <div className="mt-8 grid gap-6 lg:grid-cols-3">
-        {PLANS.map((plan) => {
+        {PUBLIC_PLANS.map((plan) => {
           const price = cycle === "monthly" ? plan.monthly : plan.yearly;
           const per = price === 0 ? "" : cycle === "monthly" ? "/mois" : "/an";
-          const isCurrent = plan.id === currentPlan && (plan.id === "GRATUIT" || cycle === currentCycle);
-          const blocked = userCount > plan.maxUsers;
+          const isCurrent = !isPublic && plan.id === currentPlan && (plan.id === "GRATUIT" || cycle === currentCycle);
+          const blocked = !isPublic && userCount > plan.maxUsers;
           return (
             <div
               key={plan.id}
@@ -179,11 +157,11 @@ export function PlansClient({
               <button
                 type="button"
                 className={`mt-6 w-full ${isCurrent ? "btn-secondary" : "btn-primary"}`}
-                disabled={!isAdmin || isCurrent || busy || (plan.id === "GRATUIT" && blocked)}
+                disabled={!isPublic && (!isAdmin || isCurrent)}
                 onClick={() => pick(plan)}
-                title={!isAdmin ? "Seul un administrateur peut changer l'abonnement" : undefined}
+                title={!isPublic && !isAdmin ? "Seul un administrateur peut changer l'abonnement" : undefined}
               >
-                {isCurrent ? "Offre actuelle" : blocked ? "Utilisateurs trop nombreux" : plan.id === "GRATUIT" ? (busy ? "Activation…" : "Revenir au gratuit") : "Choisir cette offre"}
+                {isCurrent ? "Offre actuelle" : "Choisir cette offre"}
               </button>
             </div>
           );
@@ -191,7 +169,7 @@ export function PlansClient({
       </div>
 
       {/* Historique des paiements */}
-      <section className="mt-10">
+      {!isPublic && <section className="mt-10">
         <h2 className="flex items-center gap-2 text-lg font-bold">
           <Receipt className="h-5 w-5 text-slate-400" />
           Historique des paiements
@@ -261,7 +239,7 @@ export function PlansClient({
             </div>
           </div>
         )}
-      </section>
+      </section>}
 
     </div>
   );

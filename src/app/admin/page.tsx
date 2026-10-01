@@ -19,6 +19,8 @@ export default async function AdminPage() {
         id: true,
         name: true,
         slug: true,
+        phone: true,
+        email: true,
         plan: true,
         maxUsers: true,
         maxProducts: true,

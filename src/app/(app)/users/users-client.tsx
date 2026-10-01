@@ -105,7 +105,7 @@ export function UsersClient({
         <div>
           <h1 className="text-2xl font-bold">Utilisateurs</h1>
           <p className="mt-1 text-sm text-slate-500">
-            {users.length} / {maxUsers} du plan {plan === "PRO" ? "Pro" : "Gratuit"} — les employés
+            {users.length} / {maxUsers} du plan {plan === "BUSINESS" ? "Business" : plan === "PRO" ? "Pro" : plan === "STARTER" ? "Starter" : "Gratuit"} — les employés
             ne peuvent pas gérer les utilisateurs ni les paramètres.
           </p>
         </div>

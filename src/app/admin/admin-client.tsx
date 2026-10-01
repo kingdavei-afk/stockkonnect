@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Pause, Play, Receipt, Search, ShieldAlert } from "lucide-react";
+import { Building2, Mail, MessageCircle, Pause, Phone, Play, Receipt, Search, ShieldAlert } from "lucide-react";
 import {
   cycleLabel,
   formatAmount,
@@ -16,6 +16,8 @@ type Org = {
   id: string;
   name: string;
   slug: string;
+  phone: string | null;
+  email: string | null;
   plan: string;
   maxUsers: number;
   maxProducts: number | null;
@@ -70,7 +72,9 @@ export function AdminClient({
       orgs.filter(
         (o) =>
           o.name.toLowerCase().includes(query.toLowerCase()) ||
-          o.slug.includes(query.toLowerCase())
+          o.slug.includes(query.toLowerCase()) ||
+          o.phone?.toLowerCase().includes(query.toLowerCase()) ||
+          o.email?.toLowerCase().includes(query.toLowerCase())
       ),
     [orgs, query]
   );
@@ -161,6 +165,22 @@ export function AdminClient({
     const formatted = new Date(date).toLocaleDateString("fr-FR");
     if (org.plan === "GRATUIT") return new Date(date) > new Date() ? `Essai jusqu’au ${formatted}` : `Essai terminé le ${formatted}`;
     return `Le ${formatted}`;
+  }
+
+  function whatsappUrl(org: Org) {
+    if (!org.phone) return null;
+    const raw = org.phone.trim();
+    const digits = raw.replace(/\D/g, "");
+    const internationalNumber = raw.startsWith("+")
+      ? digits
+      : digits.startsWith("00")
+        ? digits.slice(2)
+        : digits.startsWith("225")
+          ? digits
+          : `225${digits.replace(/^0/, "")}`;
+    if (internationalNumber.length < 8) return null;
+    const message = `Bonjour, je vous contacte au sujet de votre entreprise ${org.name} sur Stockkonect.`;
+    return `https://wa.me/${internationalNumber}?text=${encodeURIComponent(message)}`;
   }
 
   return (
@@ -272,7 +292,9 @@ export function AdminClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredOrgs.map((o) => (
+                {filteredOrgs.map((o) => {
+                  const whatsapp = whatsappUrl(o);
+                  return (
                   <tr key={o.id} className={`hover:bg-slate-50 ${o.status === "SUSPENDED" ? "opacity-60" : ""}`}>
                     <td>
                       <p className="flex items-center gap-2 font-medium">
@@ -280,6 +302,37 @@ export function AdminClient({
                         {o.name}
                       </p>
                       <p className="text-xs text-slate-400">{o.slug}</p>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                        {o.phone ? (
+                          <a href={`tel:${o.phone}`} className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900">
+                            <Phone className="h-3 w-3" />
+                            {o.phone}
+                          </a>
+                        ) : (
+                          <span className="text-slate-400">Téléphone non renseigné</span>
+                        )}
+                        {o.email ? (
+                          <a href={`mailto:${o.email}`} className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900">
+                            <Mail className="h-3 w-3" />
+                            {o.email}
+                          </a>
+                        ) : (
+                          <span className="text-slate-400">E-mail non renseigné</span>
+                        )}
+                        {whatsapp && (
+                          <a
+                            href={whatsapp}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Contacter ${o.name} sur WhatsApp`}
+                            title={`Contacter ${o.name} sur WhatsApp`}
+                            className="inline-flex items-center gap-1 font-medium text-emerald-700 hover:text-emerald-800"
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" />
+                            WhatsApp
+                          </a>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <select
@@ -334,7 +387,8 @@ export function AdminClient({
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
