@@ -18,6 +18,16 @@ const schema = z.object({
   email: z.string().email("Email invalide"),
   password: z.string().min(6, "Mot de passe : 6 caractères minimum"),
   organizationName: z.string().min(2, "Nom d'entreprise trop court"),
+  whatsappNumber: z
+    .string()
+    .trim()
+    .min(8, "Numéro WhatsApp invalide")
+    .max(30, "Numéro WhatsApp trop long")
+    .regex(/^(?:\+|00)?[\d\s().-]+$/, "Numéro WhatsApp invalide")
+    .refine((value) => {
+      const digitCount = value.replace(/\D/g, "").length;
+      return digitCount >= 8 && digitCount <= 15;
+    }, "Numéro WhatsApp invalide"),
 });
 
 export async function POST(req: NextRequest) {
@@ -29,7 +39,7 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  const { name, email, password, organizationName } = parsed.data;
+  const { name, email, password, organizationName, whatsappNumber } = parsed.data;
 
   const existing = await db.user.findUnique({ where: { email } });
   if (existing) {
@@ -48,6 +58,7 @@ export async function POST(req: NextRequest) {
     data: {
       name: organizationName,
       slug,
+      phone: whatsappNumber,
       plan: "GRATUIT",
       maxUsers: 2,
       maxProducts: 10,

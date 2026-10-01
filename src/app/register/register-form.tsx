@@ -7,6 +7,7 @@ export function RegisterForm() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [organizationName, setOrganizationName] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +20,7 @@ export function RegisterForm() {
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, organizationName, email, password }),
+      body: JSON.stringify({ name, organizationName, whatsappNumber, email, password }),
     });
     setLoading(false);
     if (!res.ok) {
@@ -44,6 +45,19 @@ export function RegisterForm() {
           value={organizationName}
           onChange={(e) => setOrganizationName(e.target.value)}
           placeholder="Ma Société SAS"
+          required
+        />
+      </div>
+      <div>
+        <label className="label" htmlFor="whatsappNumber">Numéro WhatsApp</label>
+        <input
+          id="whatsappNumber"
+          type="tel"
+          className="input"
+          value={whatsappNumber}
+          onChange={(e) => setWhatsappNumber(e.target.value)}
+          placeholder="Ex : +225 07 48 32 31 91"
+          autoComplete="tel"
           required
         />
       </div>
