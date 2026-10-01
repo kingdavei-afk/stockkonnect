@@ -15,6 +15,39 @@ export class InvoicePdf {
   private current: string[] = [];
   private y = 780;
 
+  /** Draws a compact vector version of the Stockkonect brand mark and wordmark. */
+  logo() {
+    this.current.push(
+      "q",
+      "0.34 0.28 0.84 rg",
+      "46 772 m 74 772 l 80 778 l 80 806 l 74 812 l 46 812 l 40 806 l 40 778 l h f",
+      "1 1 1 RG 2 w 60 804 m 72 797 l 72 785 l 60 779 l 48 785 l 48 797 l h S",
+      "48 797 m 60 790 l 72 797 S",
+      "60 790 m 60 779 S",
+      "0.44 0.94 0.76 RG 2.8 w 52 789 m 57 785 l 68 798 l S",
+      "Q",
+      "BT",
+      "0.09 0.12 0.20 rg",
+      "/F2 21 Tf",
+      "1 0 0 1 89 792 Tm",
+      "(Stock) Tj",
+      "ET",
+      "BT",
+      "0.33 0.27 0.84 rg",
+      "/F2 21 Tf",
+      "1 0 0 1 146 792 Tm",
+      "(konect) Tj",
+      "ET",
+      "BT",
+      "0.39 0.45 0.55 rg",
+      "/F2 5.5 Tf",
+      "1 0 0 1 91 779 Tm",
+      "(GESTION DE STOCK SIMPLIFIEE) Tj",
+      "ET"
+    );
+    this.y = 752;
+  }
+
   /** Ligne de texte ; passe à la page suivante automatiquement si nécessaire. */
   text(
     str: string,

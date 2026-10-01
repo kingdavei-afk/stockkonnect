@@ -2,7 +2,8 @@
 
 import { ReactNode } from "react";
 import Link from "next/link";
-import { Boxes, ShieldAlert } from "lucide-react";
+import Image from "next/image";
+import { ShieldAlert } from "lucide-react";
 
 /** Coquille dédiée à la console super-admin (hors app organisation). */
 export function AdminShell({
@@ -19,8 +20,7 @@ export function AdminShell({
       <header className="sticky top-0 z-40 bg-slate-900">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 py-3 sm:px-6">
           <Link href="/admin" className="flex items-center gap-2 text-lg font-bold text-white">
-            <Boxes className="h-6 w-6 text-indigo-400" />
-            Stockkonect
+            <Image src="/stockkonect-logo-white.svg" alt="Stockkonect" width={680} height={136} priority className="h-8 w-auto" />
             <span className="ml-2 flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-300">
               <ShieldAlert className="h-3 w-3" />
               Plateforme

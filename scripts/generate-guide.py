@@ -6,6 +6,7 @@ from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph
@@ -13,6 +14,9 @@ from reportlab.platypus import Paragraph
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "public" / "guide-stockkonect.pdf"
+LOGO_DARK = ROOT / "public" / "stockkonect-logo.png"
+LOGO_WHITE = ROOT / "public" / "stockkonect-logo-white.png"
+LOGO_MARK = ROOT / "public" / "stockkonect-mark.png"
 PAGE_W, PAGE_H = A4
 NAVY = colors.HexColor("#10182D")
 INK = colors.HexColor("#172033")
@@ -175,8 +179,7 @@ def draw_sidebar(c, x, y, w, h, active):
     c.setFillColor(NAVY)
     c.roundRect(x, y, w, h, 7, stroke=0, fill=1)
     c.rect(x + w - 7, y, 7, h, stroke=0, fill=1)
-    c.setFillColor(colors.HexColor("#8B83FF"))
-    c.circle(x + 12, y + h - 17, 5, stroke=0, fill=1)
+    c.drawImage(ImageReader(str(LOGO_MARK)), x + 5, y + h - 26, width=14, height=14, mask="auto")
     c.setFillColor(WHITE)
     c.setFont("Helvetica-Bold", 7.2)
     c.drawString(x + 21, y + h - 19, "Stockkonect")
@@ -424,13 +427,7 @@ def marker(c, x, y, number):
 
 
 def page_header(c, page_label):
-    c.setFillColor(NAVY)
-    c.roundRect(40, PAGE_H - 41, 18, 18, 5, stroke=0, fill=1)
-    c.setFillColor(colors.HexColor("#A5B4FC"))
-    c.circle(49, PAGE_H - 32, 4, stroke=0, fill=1)
-    c.setFillColor(INK)
-    c.setFont("Helvetica-Bold", 9)
-    c.drawString(65, PAGE_H - 35, "STOCKKONECT")
+    c.drawImage(ImageReader(str(LOGO_DARK)), 40, PAGE_H - 44, width=110, height=22, mask="auto")
     c.setFillColor(MUTED)
     c.setFont("Helvetica-Bold", 7)
     c.drawRightString(PAGE_W - 40, PAGE_H - 34, page_label.upper())
@@ -456,11 +453,7 @@ def draw_cover(c, total):
     c.circle(PAGE_W - 15, PAGE_H - 40, 165, stroke=0, fill=1)
     c.setFillColor(colors.HexColor("#5D54C8"))
     c.circle(PAGE_W - 21, PAGE_H - 43, 115, stroke=0, fill=1)
-    c.setFillColor(colors.HexColor("#A5B4FC"))
-    c.circle(61, PAGE_H - 67, 13, stroke=0, fill=1)
-    c.setFillColor(NAVY)
-    c.setFont("Helvetica-Bold", 18)
-    c.drawString(84, PAGE_H - 72, "Stockkonect")
+    c.drawImage(ImageReader(str(LOGO_WHITE)), 42, PAGE_H - 94, width=170, height=34, mask="auto")
     c.setFillColor(colors.HexColor("#C7D2FE"))
     c.setFont("Helvetica-Bold", 8)
     c.drawString(43, PAGE_H - 146, "GUIDE PRATIQUE")

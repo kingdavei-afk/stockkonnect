@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   const description = `Abonnement Stockkonect ${planLabel(payment.planId)}${cycleLabel(payment.cycle) ? ` - ${cycleLabel(payment.cycle)}` : ""}`;
 
   const doc = new InvoicePdf();
-  doc.text("Stockkonect", { size: 18, bold: true, gap: 2 });
+  doc.logo();
   doc.text("Facture d'abonnement", { size: 11, color: "0.35 0.35 0.45", gap: 14 });
   doc.line();
 

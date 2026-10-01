@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Check, ChevronLeft, Download, Receipt } from "lucide-react";
 import { PUBLIC_PLANS, type Plan } from "@/lib/plans";
 import {
@@ -68,8 +69,14 @@ export function PlansClient({
   return (
     <div>
       <Link href={isPublic ? "/" : "/settings"} className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
-        <ChevronLeft className="h-4 w-4" />
-        {isPublic ? "Retour à l'accueil" : "Retour aux paramètres"}
+        {isPublic ? (
+          <Image src="/stockkonect-logo.svg" alt="Stockkonect — accueil" width={680} height={136} className="h-9 w-auto" />
+        ) : (
+          <>
+            <ChevronLeft className="h-4 w-4" />
+            Retour aux paramètres
+          </>
+        )}
       </Link>
       <h1 className="text-2xl font-bold">{isPublic ? "Nos prix" : "Options d'abonnement"}</h1>
       <p className="mt-1 text-sm text-slate-500">

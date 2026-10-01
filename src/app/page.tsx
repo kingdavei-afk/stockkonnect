@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Boxes, BarChart3, ScanBarcode, ArrowLeftRight, MessageCircle, BookOpen } from "lucide-react";
 
 const WHATSAPP_URL =
@@ -9,10 +10,14 @@ export default function LandingPage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-indigo-950 text-white">
       <header className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 sm:px-6">
-        <div className="flex items-center gap-2 text-xl font-bold">
-          <Boxes className="h-7 w-7 text-indigo-400" />
-          Stockkonect
-        </div>
+        <Image
+          src="/stockkonect-logo-white.svg"
+          alt="Stockkonect — gestion de stock simplifiée"
+          width={680}
+          height={136}
+          priority
+          className="h-10 w-auto"
+        />
         <nav aria-label="Navigation principale" className="flex flex-wrap items-center justify-center gap-1 sm:gap-2">
           <Link href="/plans" className="btn text-slate-200 hover:bg-white/10 hover:text-white">
             Nos Prix

@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: "Stockkonect — Gestion de stock",
   description:
     "Application SaaS de gestion de stock : produits, mouvements, ventes, approvisionnements, alertes.",
+  icons: { icon: "/stockkonect-mark.svg" },
 };
 
 export default function RootLayout({

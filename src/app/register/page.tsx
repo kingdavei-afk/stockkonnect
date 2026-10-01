@@ -1,14 +1,13 @@
 import Link from "next/link";
+import Image from "next/image";
 import { RegisterForm } from "./register-form";
-import { Boxes } from "lucide-react";
 
 export default function RegisterPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
       <div className="w-full max-w-md">
-        <div className="mb-6 flex items-center justify-center gap-2 text-2xl font-bold text-slate-900">
-          <Boxes className="h-8 w-8 text-indigo-600" />
-          Stockkonect
+        <div className="mb-6 flex justify-center">
+          <Image src="/stockkonect-logo.svg" alt="Stockkonect" width={680} height={136} priority className="h-12 w-auto" />
         </div>
         <div className="card p-8">
           <h1 className="text-xl font-bold">Créer un compte</h1>
