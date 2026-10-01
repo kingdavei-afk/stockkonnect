@@ -7,11 +7,17 @@ import {
   BookOpen,
   Boxes,
   Check,
+  CircleHelp,
+  ContactRound,
+  Eye,
   MessageCircle,
   ScanBarcode,
   ShoppingCart,
+  Smartphone,
+  UsersRound,
 } from "lucide-react";
 import { PUBLIC_PLANS } from "@/lib/plans";
+import { MainSiteLink } from "@/components/main-site-link";
 
 const WHATSAPP_URL =
   "https://wa.me/2250748323191?text=" +
@@ -34,6 +40,11 @@ const features = [
     desc: "Enregistrez vos ventes et approvisionnements au même endroit.",
   },
   {
+    icon: ContactRound,
+    title: "Clients & fournisseurs",
+    desc: "Retrouvez facilement les contacts liés à vos ventes et à vos achats.",
+  },
+  {
     icon: BellRing,
     title: "Alertes de stock bas",
     desc: "Repérez les produits à réapprovisionner avant la rupture.",
@@ -48,6 +59,11 @@ const features = [
     title: "Tableau de bord & exports",
     desc: "Consultez vos indicateurs et exportez vos données au format CSV.",
   },
+  {
+    icon: UsersRound,
+    title: "Travail en équipe",
+    desc: "Invitez vos collaborateurs selon la capacité prévue par votre formule.",
+  },
 ];
 
 const steps = [
@@ -61,14 +77,17 @@ export default function LandingPage() {
     <main className="min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-indigo-950 text-white">
       <header className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:px-6 sm:py-6">
         <div className="flex w-full items-center justify-between sm:w-auto">
-          <Image
-            src="/stockkonect-logo-white.svg"
-            alt="Stockkonect — gestion de stock simplifiée"
-            width={680}
-            height={136}
-            priority
-            className="h-8 w-auto sm:h-10"
-          />
+          <div className="flex flex-col items-start">
+            <Image
+              src="/stockkonect-logo-white.svg"
+              alt="Stockkonect — gestion de stock simplifiée"
+              width={680}
+              height={136}
+              priority
+              className="h-8 w-auto sm:h-10"
+            />
+            <MainSiteLink className="text-indigo-200 hover:text-white" />
+          </div>
           <Link href="/login" className="btn border border-white/15 px-3 text-white hover:bg-white/10 sm:hidden">
             Connexion
           </Link>
@@ -174,6 +193,7 @@ export default function LandingPage() {
             <p className="text-sm font-semibold uppercase tracking-wider text-indigo-300">Des formules pour votre croissance</p>
             <h2 id="offres-title" className="mt-2 text-2xl font-bold sm:text-3xl">Choisissez l&apos;offre adaptée</h2>
             <p className="mt-3 text-sm leading-6 text-slate-300 sm:text-base">Essai gratuit pendant 7 jours, puis choisissez votre formule. L&apos;équipe vous accompagne sur WhatsApp.</p>
+            <p className="mt-2 text-xs leading-5 text-slate-400 sm:text-sm">Paiement mensuel ou annuel · 2 mois offerts sur la formule annuelle · Souscription accompagnée par WhatsApp.</p>
           </div>
           <div className="grid grid-cols-1 gap-4 pt-2 text-left md:grid-cols-3 md:gap-5">
             {PUBLIC_PLANS.map((plan) => (
@@ -195,6 +215,32 @@ export default function LandingPage() {
             Voir les tarifs et choisir une offre
           </Link>
           <p className="mt-3 text-xs text-slate-400">La souscription payante se fait avec notre équipe sur WhatsApp.</p>
+        </section>
+
+        <section className="pt-16 sm:pt-24" aria-labelledby="faq-title">
+          <div className="mx-auto mb-8 max-w-2xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-wider text-indigo-300">Informations pratiques</p>
+            <h2 id="faq-title" className="mt-2 text-2xl font-bold sm:text-3xl">Avant de vous lancer</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-300 sm:text-base">Les réponses aux questions les plus fréquentes pour démarrer en toute clarté.</p>
+          </div>
+          <div className="grid grid-cols-1 gap-3 text-left sm:grid-cols-2 sm:gap-5">
+            <article className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 sm:p-6">
+              <h3 className="flex items-start gap-3 font-semibold"><CircleHelp aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-indigo-300" />Comment fonctionne l’essai gratuit ?</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-300">Créez votre compte pour profiter de 7 jours d’essai. À la fin de l’essai, contactez notre équipe pour choisir une formule payante.</p>
+            </article>
+            <article className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 sm:p-6">
+              <h3 className="flex items-start gap-3 font-semibold"><Smartphone aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-indigo-300" />Puis-je utiliser StockKonect sur mon téléphone ?</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-300">Oui. StockKonect s’ouvre dans le navigateur de votre téléphone, tablette ou ordinateur. Une connexion Internet est nécessaire.</p>
+            </article>
+            <article className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 sm:p-6">
+              <h3 className="flex items-start gap-3 font-semibold"><MessageCircle aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-indigo-300" />Comment souscrire après l’essai ?</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-300">Les abonnements sont gérés manuellement : choisissez une offre et notre équipe vous indiquera la procédure sur WhatsApp. Aucun paiement en ligne n’est demandé sur cette page.</p>
+            </article>
+            <article className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 sm:p-6">
+              <h3 className="flex items-start gap-3 font-semibold"><Eye aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-indigo-300" />Puis-je essayer avant de créer mon espace ?</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-300">Oui. Le compte démo permet de parcourir l’interface en lecture seule. Vous pouvez ensuite créer votre propre espace pour démarrer votre essai.</p>
+            </article>
+          </div>
         </section>
 
         <section className="mt-16 rounded-3xl border border-white/10 bg-gradient-to-r from-indigo-600/30 to-emerald-500/15 px-5 py-8 text-center sm:mt-24 sm:px-10 sm:py-12">

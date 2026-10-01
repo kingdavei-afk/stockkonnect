@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { MainSiteLink } from "@/components/main-site-link";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage({
@@ -11,8 +12,9 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
       <div className="w-full max-w-md">
-        <div className="mb-6 flex justify-center">
+        <div className="mb-6 flex flex-col items-center">
           <Image src="/stockkonect-logo.svg" alt="Stockkonect" width={680} height={136} priority className="h-12 w-auto" />
+          <MainSiteLink className="text-indigo-600 hover:text-indigo-800" />
         </div>
         <div className="card p-8">
           <h1 className="text-xl font-bold">Connexion</h1>
