@@ -140,7 +140,9 @@ export function AppShell({
     <div className="min-h-screen">
       {/* Barre supérieure mobile */}
       <header className="sticky top-0 z-40 flex items-center justify-between bg-slate-900 px-4 py-3 lg:hidden">
-        <Image src="/stockkonect-logo-white.svg" alt="Stockkonect" width={680} height={136} className="h-8 w-auto" />
+        <Link href="/" aria-label="Stockkonect — accueil" className="flex items-center">
+          <Image src="/stockkonect-logo-white.svg" alt="Stockkonect" width={680} height={136} className="h-8 w-auto" />
+        </Link>
         <button
           className="rounded-lg p-2 text-slate-300 hover:bg-slate-800 hover:text-white"
           onClick={() => setOpen(true)}
@@ -154,7 +156,9 @@ export function AppShell({
         {/* Sidebar desktop */}
         <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-slate-900 lg:flex">
           <div className="flex items-center px-5 py-5">
-            <Image src="/stockkonect-logo-white.svg" alt="Stockkonect" width={680} height={136} priority className="h-8 w-auto" />
+            <Link href="/" aria-label="Stockkonect — accueil" className="flex items-center">
+              <Image src="/stockkonect-logo-white.svg" alt="Stockkonect" width={680} height={136} priority className="h-8 w-auto" />
+            </Link>
           </div>
           {/* Nom de l'admin connecté + entreprise */}
           <UserBlock userName={userName} organizationName={organizationName} />
@@ -171,7 +175,9 @@ export function AppShell({
             />
             <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-slate-900 shadow-xl">
               <div className="flex items-center justify-between px-6 py-5">
-                <Image src="/stockkonect-logo-white.svg" alt="Stockkonect" width={680} height={136} className="h-8 w-auto" />
+                <Link href="/" aria-label="Stockkonect — accueil" className="flex items-center" onClick={() => setOpen(false)}>
+                  <Image src="/stockkonect-logo-white.svg" alt="Stockkonect" width={680} height={136} className="h-8 w-auto" />
+                </Link>
                 <button
                   className="rounded-lg p-2 text-slate-300 hover:bg-slate-800 hover:text-white"
                   onClick={() => setOpen(false)}

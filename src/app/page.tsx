@@ -17,7 +17,6 @@ import {
   UsersRound,
 } from "lucide-react";
 import { PUBLIC_PLANS } from "@/lib/plans";
-import { MainSiteLink } from "@/components/main-site-link";
 
 const WHATSAPP_URL =
   "https://wa.me/2250748323191?text=" +
@@ -77,7 +76,7 @@ export default function LandingPage() {
     <main className="min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-indigo-950 text-white">
       <header className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:px-6 sm:py-6">
         <div className="flex w-full items-center justify-between sm:w-auto">
-          <div className="flex flex-col items-start">
+          <Link href="/" aria-label="Stockkonect — accueil" className="flex flex-col items-start">
             <Image
               src="/stockkonect-logo-white.svg"
               alt="Stockkonect — gestion de stock simplifiée"
@@ -86,8 +85,7 @@ export default function LandingPage() {
               priority
               className="h-8 w-auto sm:h-10"
             />
-            <MainSiteLink className="text-indigo-200 hover:text-white" />
-          </div>
+          </Link>
           <Link href="/login" className="btn border border-white/15 px-3 text-white hover:bg-white/10 sm:hidden">
             Connexion
           </Link>

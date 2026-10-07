@@ -5,7 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { Check, ChevronLeft, Download, Receipt } from "lucide-react";
 import { PUBLIC_PLANS, type Plan } from "@/lib/plans";
-import { MainSiteLink } from "@/components/main-site-link";
 import {
   cycleLabel,
   formatAmount,
@@ -71,10 +70,9 @@ export function PlansClient({
     <div>
       {isPublic ? (
         <div className="mb-4 flex flex-col items-start">
-          <Link href="/" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+          <Link href="/" aria-label="Stockkonect — accueil" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
             <Image src="/stockkonect-logo.svg" alt="Stockkonect — accueil" width={680} height={136} className="h-9 w-auto" />
           </Link>
-          <MainSiteLink className="text-indigo-600 hover:text-indigo-800" />
         </div>
       ) : (
         <Link href="/settings" className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
