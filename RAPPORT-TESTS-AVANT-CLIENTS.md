@@ -6,18 +6,19 @@
 
 ## Verdict
 
-**Les parcours métier de base sont validés sur une base PostgreSQL jetable, mais la production n’est pas encore prête pour les premiers clients.** Deux sujets doivent être réglés avant le démarrage commercial :
+**Le défaut de la page Tarifs est corrigé et vérifié en production.** Les parcours métier de base sont validés sur une base PostgreSQL jetable, mais StockKonect n’est pas encore prêt pour l’ouverture commerciale : la vidéo reste bloquée sur la production actuelle et l’audit conserve des vulnérabilités.
 
-1. Le déploiement public actuel bloque la page Tarifs et les vidéos de la landing page.
+1. Le smoke test production reste à **7/10** : affiche vidéo 404 et formats MP4/WebM redirigés vers Connexion.
 2. L’audit des dépendances de production conserve **5 avis non résolus — 4 High et 1 Moderate**.
 
-Les changements correctifs et la nouvelle infrastructure de tests sont préparés sur la branche `qa/pre-client-readiness`, séparément de la refonte de landing page déjà proposée. **Aucun déploiement ni changement des données de production n’a été effectué.**
+Le hotfix minimal [PR #3](https://github.com/kingdavei-afk/stockkonnect/pull/3) a été fusionné sur `main` et déployé. Il ajoute uniquement `/plans` à la liste des routes publiques. **Aucune donnée métier ou de production n’a été modifiée.** Les PR de redesign et de tests restent séparés.
 
 ## Résultats exécutés
 
 | Contrôle | Résultat | Détail |
 |---|---:|---|
-| Smoke test de production — pages publiques et accès | **6/10** | Échecs ciblés sur `/plans`, l’affiche vidéo et les deux formats vidéo. |
+| Smoke test de production avant hotfix | **6/10** | Échecs ciblés sur `/plans`, l’affiche vidéo et les deux formats vidéo. |
+| Smoke test de production après hotfix | **7/10** | `/plans` répond 200 et le HTML contient Starter, Pro et Business ; seuls les contrôles vidéo échouent. |
 | Connexion au compte démo et tableau de bord production | **4/4** | Accueil, guide PDF, connexion démo et `/dashboard` répondent en HTTP 200. La connexion n’a créé aucune donnée métier. |
 | Smoke test de la branche corrigée en local | **10/10** | Pages publiques, affiche et vidéos accessibles ; dashboard redirigé sans session ; API produits renvoie 401 sans session. |
 | Tests unitaires | **7/7** | Sessions JWT, jetons webhook, plans, lecture seule du compte démo, références organisationnelles. |
@@ -27,13 +28,13 @@ Les changements correctifs et la nouvelle infrastructure de tests sont préparé
 | ESLint | **Réussi, avec avertissements** | 0 erreur, 11 avertissements préexistants (imports/variables inutilisés et un `<img>` non optimisé). |
 | Validation Prisma | **Réussie** | Le schéma est valide. Avertissement distinct : la configuration `package.json#prisma` est dépréciée pour Prisma 7. |
 
-### Défauts observés sur la production actuelle
+### Défauts observés avant le hotfix et état actuel
 
-- `GET /plans` → **307 vers `/login`** : un visiteur non connecté ne peut pas consulter les offres.
+- `GET /plans` → **307 vers `/login`** avant le hotfix ; **corrigé** : depuis le déploiement du PR #3, la requête anonyme répond **200** et le contenu inclut les offres Starter, Pro et Business.
 - L’affiche `video-stockkonect-poster.jpg` → **404** : l’asset ajouté à la branche de redesign n’est pas encore déployé.
 - `video-publicitaire-stockkonect.mp4` et `.webm` → **307 vers `/login`** : les assets sont traités comme des routes privées.
 
-La branche de redesign autorise déjà les formats vidéo et ajoute l’affiche. La branche QA ajoute également `/plans` à la liste des routes publiques. Ces routes passent ensuite en **10/10 en local**.
+La branche de redesign autorise déjà les formats vidéo et ajoute l’affiche ; ces routes passent en **10/10 en local**, mais le redesign reste à fusionner/déployer pour corriger le comportement vidéo en production.
 
 ## Couverture d’intégration réalisée
 
@@ -58,7 +59,7 @@ NPM ne propose que des changements non triviaux pour les corriger : `prisma@6.12
 
 ## Ce qui reste à tester en staging avant ouverture commerciale
 
-- Déployer la branche après revue, puis rejouer le smoke test sur la production actualisée et confirmer **10/10**.
+- Après déploiement de la refonte PR #1, rejouer le smoke test production et confirmer **10/10**, y compris les médias vidéo.
 - Tester les paiements uniquement avec un compte et des clés **CinetPay sandbox**, y compris callback/webhook, statut, montant, idempotence et échec réseau. Aucun paiement réel n’a été initié.
 - Vérifier sauvegarde/restauration, invitations et permissions des différents rôles, concurrence lors de deux ventes simultanées, et parcours d’inscription sur mobile avec un jeu de données de staging.
 - Traiter les vulnérabilités npm et refaire `npm audit --omit=dev` après les changements retenus.
