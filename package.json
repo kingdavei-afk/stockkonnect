@@ -8,6 +8,9 @@
     "build": "node scripts/build.mjs",
     "start": "next start",
     "lint": "eslint",
+    "test": "tsx --test tests/*.test.ts",
+    "test:smoke": "node scripts/smoke-test.mjs",
+    "test:integration": "node scripts/integration-test.mjs",
     "db:seed": "tsx prisma/seed.ts"
   },
   "prisma": {
@@ -18,7 +21,7 @@
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.12",
     "lucide-react": "^1.45.0",
-    "next": "15.5.25",
+    "next": "15.5.27",
     "prisma": "^6.19.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -34,7 +37,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.5.25",
+    "eslint-config-next": "15.5.27",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
