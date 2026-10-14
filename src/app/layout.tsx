@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Stockkonect — Gestion de stock",
+  title: "StockKonect — Le stock juste, au bon moment",
   description:
-    "Application SaaS de gestion de stock : produits, mouvements, ventes, approvisionnements, alertes.",
+    "Gérez produits, ventes, approvisionnements et alertes simplement. Essayez StockKonect gratuitement pendant 7 jours.",
   icons: { icon: "/stockkonect-mark.svg" },
 };
 
