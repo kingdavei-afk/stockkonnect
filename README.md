@@ -85,8 +85,12 @@ Sécurité : le webhook ne fait jamais confiance au POST reçu — le `notify_to
 | `npm run build` | Build de production |
 | `npm start` | Serveur de production |
 | `npm run lint` | ESLint |
+| `npm test` | Tests unitaires |
+| `npm run test:e2e` | Tunnel navigateur Playwright sur une base PostgreSQL locale de test |
 | `npm run db:seed` | Insère les données de démo |
 | `npx prisma studio` | Explorateur de base de données |
+
+`npm run test:e2e` refuse les bases distantes et exige un nom de base contenant `test`. Il applique les migrations, démarre Next.js sur localhost, neutralise les variables CinetPay et vérifie le tunnel jusqu’au handoff WhatsApp. Il ne réalise aucun paiement réel. Si Chromium n’est pas installé sur le système, installez-le avec `npx playwright install chromium`.
 
 ## Structure
 

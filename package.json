@@ -11,6 +11,7 @@
     "test": "tsx --test tests/*.test.ts",
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:integration": "node scripts/integration-test.mjs",
+    "test:e2e": "node scripts/run-e2e-local.mjs",
     "db:seed": "tsx prisma/seed.ts"
   },
   "prisma": {
@@ -31,6 +32,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",

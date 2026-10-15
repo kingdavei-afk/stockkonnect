@@ -1,6 +1,6 @@
 # Recette technique pré-client — StockKonect
 
-**Date :** 14 octobre 2026  
+**Date :** 15 octobre 2026
 **Cible de production vérifiée :** <https://stockkonnect.vercel.app/>  
 **Dépôt :** <https://github.com/kingdavei-afk/stockkonnect>
 
@@ -10,6 +10,7 @@
 
 1. Le smoke test production reste à **7/10** : affiche vidéo 404 et formats MP4/WebM redirigés vers Connexion.
 2. L’audit des dépendances de production conserve **5 avis non résolus — 4 High et 1 Moderate**.
+3. Le tunnel navigateur est validé jusqu’au handoff WhatsApp. Le paiement en ligne n’est pas implémenté : le checkout payant répond `409` et aucun paiement n’est créé.
 
 Le hotfix minimal [PR #3](https://github.com/kingdavei-afk/stockkonnect/pull/3) a été fusionné sur `main` et déployé. Il ajoute uniquement `/plans` à la liste des routes publiques. **Aucune donnée métier ou de production n’a été modifiée.** Les PR de redesign et de tests restent séparés.
 
@@ -23,6 +24,7 @@ Le hotfix minimal [PR #3](https://github.com/kingdavei-afk/stockkonnect/pull/3) 
 | Smoke test de la branche corrigée en local | **10/10** | Pages publiques, affiche et vidéos accessibles ; dashboard redirigé sans session ; API produits renvoie 401 sans session. |
 | Tests unitaires | **7/7** | Sessions JWT, jetons webhook, plans, lecture seule du compte démo, références organisationnelles. |
 | Tests d’intégration HTTP/PostgreSQL | **48 assertions réussies** | Inscription, sessions HttpOnly/SameSite, unicité SKU, isolation entre deux organisations, ventes, annulations, approvisionnements, stock insuffisant, quota du forfait gratuit et blocage des écritures de démo. |
+| Tunnel E2E Playwright (local) | **1/1** | Landing → inscription → essai → Pro annuel → WhatsApp. L’API checkout payant renvoie 409 ; compteur Payment inchangé à zéro. Aucun paiement réel ni message WhatsApp envoyé. |
 | Build Next.js production | **Réussi** | Génération et compilation des 42 routes statiques ; routes applicatives compilées. |
 | TypeScript (`npx tsc --noEmit`) | **Réussi** | Aucune erreur. |
 | ESLint | **Réussi, avec avertissements** | 0 erreur, 11 avertissements préexistants (imports/variables inutilisés et un `<img>` non optimisé). |
@@ -60,7 +62,7 @@ NPM ne propose que des changements non triviaux pour les corriger : `prisma@6.12
 ## Ce qui reste à tester en staging avant ouverture commerciale
 
 - Après déploiement de la refonte PR #1, rejouer le smoke test production et confirmer **10/10**, y compris les médias vidéo.
-- Tester les paiements uniquement avec un compte et des clés **CinetPay sandbox**, y compris callback/webhook, statut, montant, idempotence et échec réseau. Aucun paiement réel n’a été initié.
+- Le parcours actuel annonce un accompagnement de souscription via WhatsApp. Avant le premier paiement manuel, formaliser la confirmation du règlement, l’activation de l’abonnement et la remise d’un justificatif. Si un checkout CinetPay est activé plus tard, tester uniquement avec un compte et des clés **sandbox**, y compris callback/webhook, statut, montant, idempotence et échec réseau. Aucun paiement réel n’a été initié.
 - Vérifier sauvegarde/restauration, invitations et permissions des différents rôles, concurrence lors de deux ventes simultanées, et parcours d’inscription sur mobile avec un jeu de données de staging.
 - Traiter les vulnérabilités npm et refaire `npm audit --omit=dev` après les changements retenus.
 - Refaire une recette complète après tout changement de dépendance ou de schéma.
@@ -70,4 +72,5 @@ NPM ne propose que des changements non triviaux pour les corriger : `prisma@6.12
 - `npm test` — tests unitaires sans base.
 - `npm run test:smoke` — requêtes GET/HEAD en lecture seule ; `BASE=https://stockkonnect.vercel.app npm run test:smoke` pour tester un déploiement, sans connexion et sans mutation métier.
 - `npm run test:integration` — tests locaux de bout en bout ; nécessite une build récente, les migrations/seed sur une base PostgreSQL locale dédiée `*_test`, et `DATABASE_URL` correspondant à cette base.
+- `npm run test:e2e` — Playwright/Chromium local ; exige `DATABASE_URL` sur `localhost` et un nom de base contenant `test`. Le lanceur applique les migrations, neutralise les variables CinetPay et refuse les bases distantes ; il vérifie le handoff WhatsApp, pas un règlement réel.
 - `npx tsc --noEmit`, `npm run lint`, `npm run build` — vérifications de code/build.
