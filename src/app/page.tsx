@@ -17,6 +17,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { PUBLIC_PLANS } from "@/lib/plans";
+import { InstallBanner } from "@/components/install-banner";
 
 const WHATSAPP_URL =
   "https://wa.me/2250748323191?text=" +
@@ -278,6 +279,7 @@ export default function LandingPage() {
           <MessageCircle aria-hidden="true" className="h-6 w-6 sm:h-7 sm:w-7" />
         </a>
       </footer>
+      <InstallBanner />
     </main>
   );
 }
