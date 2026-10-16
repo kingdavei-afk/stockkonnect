@@ -4,6 +4,7 @@ import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Menu, X, LifeBuoy, MessageCircle, BookOpen, CreditCard } from "lucide-react";
+import { InstallBanner } from "@/components/install-banner";
 
 const baseLinks = [
   { href: "/dashboard", label: "Tableau de bord" },
@@ -202,6 +203,7 @@ export function AppShell({
           {children}
         </main>
       </div>
+      <InstallBanner mobileOnly />
     </div>
   );
 }

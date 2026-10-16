@@ -39,12 +39,24 @@ function recentlyDismissed(): boolean {
  * Bandeau « Installer l'app » :
  * - iOS/iPadOS : aucun événement navigateur → on guide (Partager → Sur l'écran d'accueil) ;
  * - Android/desktop Chromium : bandeau avec bouton « Installer » dès que beforeinstallprompt se déclenche ;
- * - masqué en mode standalone, après installation, ou 14 jours après fermeture.
+ * - masqué en mode standalone, après installation, ou 14 jours après fermeture ;
+ * - avec `mobileOnly`, limité aux écrans < 1024 px (usage dans l'application connectée).
  */
-export function InstallBanner() {
+export function InstallBanner({ mobileOnly = false }: { mobileOnly?: boolean }) {
   const [variant, setVariant] = useState<"hidden" | "ios" | "install">("hidden");
   const [closed, setClosed] = useState(false);
+  const [narrow, setNarrow] = useState(false);
   const deferredRef = useRef<BeforeInstallPromptEvent | null>(null);
+
+  // Variante application : n'afficher que sur petits écrans (breakpoint lg)
+  useEffect(() => {
+    if (!mobileOnly) return;
+    const mq = window.matchMedia("(max-width: 1023px)");
+    setNarrow(mq.matches);
+    const onChange = (event: MediaQueryListEvent) => setNarrow(event.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [mobileOnly]);
 
   useEffect(() => {
     if (isStandalone() || recentlyDismissed()) return;
@@ -95,7 +107,7 @@ export function InstallBanner() {
     setClosed(true);
   }
 
-  if (variant === "hidden" || closed) return null;
+  if (variant === "hidden" || closed || (mobileOnly && !narrow)) return null;
 
   const ios = variant === "ios";
 
