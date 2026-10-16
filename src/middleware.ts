@@ -51,6 +51,8 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|uploads|.*\\.(?:png|jpg|jpeg|svg|ico|webp|pdf)$).*)",
+    // PWA : sw.js et *.webmanifest doivent rester accessibles aux visiteurs
+    // anonymes (sinon redirigés vers /login : installation PWA cassée)
+    "/((?!_next/static|_next/image|favicon.ico|uploads|sw\\.js$|.*\\.webmanifest$|.*\\.(?:png|jpg|jpeg|svg|ico|webp|pdf)$).*)",
   ],
 };
