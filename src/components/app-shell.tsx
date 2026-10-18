@@ -11,6 +11,7 @@ const baseLinks = [
   { href: "/products", label: "Produits" },
   { href: "/movements", label: "Mouvements" },
   { href: "/sales", label: "Ventes" },
+  { href: "/quotes", label: "Devis" },
   { href: "/purchases", label: "Approvisionnements" },
   { href: "/customers", label: "Clients" },
   { href: "/categories", label: "Catégories" },

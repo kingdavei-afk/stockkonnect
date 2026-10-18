@@ -51,6 +51,7 @@ model Organization {
   purchases    Purchase[]
   customers    Customer[]
   payments     Payment[]
+  quotes       Quote[]
 }
 
 model Settings {
@@ -103,6 +104,7 @@ model Product {
   movements      StockMovement[]
   saleItems      SaleItem[]
   purchaseItems  PurchaseItem[]
+  quoteItems     QuoteItem[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
@@ -134,6 +136,7 @@ model Customer {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   sales          Sale[]
+  quotes         Quote[]
 }
 
 model Sale {
@@ -186,6 +189,35 @@ model PurchaseItem {
   product    Product  @relation(fields: [productId], references: [id])
   quantity   Int
   unitCost   Float
+}
+
+model Quote {
+  id             String       @id @default(cuid())
+  reference      String
+  status         String       @default("DRAFT") // DRAFT | SENT | ACCEPTED | DECLINED | EXPIRED
+  total          Float        @default(0)
+  notes          String?
+  validUntil     DateTime?
+  customerId     String?
+  customer       Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items          QuoteItem[]
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, reference])
+  @@index([organizationId, createdAt])
+}
+
+model QuoteItem {
+  id        String  @id @default(cuid())
+  quoteId   String
+  quote     Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Float
 }
 
 model Payment {
