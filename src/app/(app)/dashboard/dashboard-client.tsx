@@ -5,13 +5,13 @@ import { formatMoney } from "@/lib/money";
 import { ExportButton } from "@/components/export-button";
 import {
   Package,
-  Euro,
   TrendingUp,
   TrendingDown,
   AlertTriangle,
   ArrowDownToLine,
   ArrowUpFromLine,
   Scale,
+  Coins,
 } from "lucide-react";
 import {
   AreaChart,
@@ -50,6 +50,7 @@ export function DashboardClient({
     totalUnits: number;
     stockValue: number;
     revenueMonth: number;
+    profitMonth: number;
     costMonth: number;
     salesCount: number;
     lowStockCount: number;
@@ -82,6 +83,13 @@ export function DashboardClient({
       color: "bg-emerald-100 text-emerald-700",
     },
     {
+      label: "Bénéfices réalisés",
+      value: fmt(kpis.profitMonth, currency),
+      sub: "marge sur les ventes du mois",
+      icon: Coins,
+      color: "bg-teal-100 text-teal-700",
+    },
+    {
       label: "Achats du mois",
       value: fmt(kpis.costMonth, currency),
       sub: "approvisionnements",
@@ -111,7 +119,7 @@ export function DashboardClient({
         <ExportButton href="/api/export/purchases" label="Exporter les approvisionnements" />
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {cards.map(({ label, value, sub, icon: Icon, color }) => (
           <div key={label} className="card p-5">
             <div className="flex items-center justify-between">

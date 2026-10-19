@@ -14,10 +14,15 @@ function slugify(name: string) {
 }
 
 const schema = z.object({
-  name: z.string().min(2, "Nom trop court"),
-  email: z.string().email("Email invalide"),
-  password: z.string().min(6, "Mot de passe : 6 caractères minimum"),
-  organizationName: z.string().min(2, "Nom d'entreprise trop court"),
+  // .trim() avant les contrôles : des valeurs uniquement en espaces
+  // doivent être rejetées, pas acceptées comme "remplies"
+  name: z.string().trim().min(2, "Nom trop court"),
+  email: z.string().trim().email("Email invalide"),
+  password: z
+    .string()
+    .min(6, "Mot de passe : 6 caractères minimum")
+    .refine((value) => value.trim().length >= 6, "Mot de passe : 6 caractères minimum"),
+  organizationName: z.string().trim().min(2, "Nom d'entreprise trop court"),
   whatsappNumber: z
     .string()
     .trim()

@@ -6,14 +6,14 @@ import { getSessionUser, isAdmin } from "@/lib/auth";
 import { blockDemoWrites } from "@/lib/demo-access";
 
 const createSchema = z.object({
-  name: z.string().min(2, "Nom trop court"),
-  email: z.string().email("Email invalide"),
+  name: z.string().trim().min(2, "Nom trop court"),
+  email: z.string().trim().email("Email invalide"),
   password: z.string().min(6, "Mot de passe : 6 caractères minimum"),
   role: z.enum(["ADMIN", "STAFF"]),
 });
 
 const updateSchema = z.object({
-  name: z.string().min(2, "Nom trop court").optional(),
+  name: z.string().trim().min(2, "Nom trop court").optional(),
   password: z.string().min(6, "Mot de passe : 6 caractères minimum").optional(),
   role: z.enum(["ADMIN", "STAFF"]).optional(),
 });

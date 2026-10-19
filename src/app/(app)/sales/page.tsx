@@ -29,12 +29,20 @@ export default async function SalesPage() {
     }),
   ]);
 
+  const org = user.organization;
   return (
     <SalesClient
       sales={sales}
       products={products}
       customers={customers}
-      currency={user.organization.settings?.currency ?? "EUR"}
+      currency={org.settings?.currency ?? "EUR"}
+      company={{
+        name: org.name,
+        address: org.address,
+        phone: org.phone,
+        email: org.email,
+        taxId: org.taxId,
+      }}
     />
   );
 }

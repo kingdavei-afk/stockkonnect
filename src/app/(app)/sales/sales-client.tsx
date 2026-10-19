@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Ban, TrendingUp } from "lucide-react";
+import { Ban, Printer, TrendingUp } from "lucide-react";
 import { DocumentForm } from "@/components/document-form";
 import { EmptyState } from "@/components/ui";
 import { formatMoney } from "@/lib/money";
 import { SalesExportButton } from "@/components/export-button";
+import { PrintableInvoice, CompanyInfo } from "@/components/printable-invoice";
 
 type Sale = {
   id: string;
@@ -22,13 +24,16 @@ export function SalesClient({
   products,
   customers,
   currency,
+  company,
 }: {
   sales: Sale[];
   products: { id: string; name: string; sku: string; price: number; cost: number; quantity: number }[];
   customers: { id: string; name: string }[];
   currency: string;
+  company: CompanyInfo;
 }) {
   const router = useRouter();
+  const [invoice, setInvoice] = useState<Sale | null>(null);
 
   const fmt = (n: number) => formatMoney(n, currency);
 
@@ -122,7 +127,14 @@ export function SalesClient({
                   </span>
                 </td>
                 <td>
-                  <div className="flex items-center justify-end">
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      className="btn-secondary !p-2"
+                      title="Imprimer la facture / le reçu"
+                      onClick={() => setInvoice(s)}
+                    >
+                      <Printer className="h-4 w-4" />
+                    </button>
                     {s.status === "COMPLETED" && (
                       <button
                         className="btn-secondary !p-2"
@@ -143,6 +155,25 @@ export function SalesClient({
           <EmptyState message="Aucune vente enregistrée. Créez votre première vente !" />
         )}
       </div>
+
+      {invoice && (
+        <PrintableInvoice
+          title={invoice.status === "COMPLETED" ? "Facture" : "Facture (annulée)"}
+          reference={invoice.reference}
+          date={String(invoice.createdAt)}
+          company={company}
+          customerName={invoice.customer?.name ?? null}
+          lines={invoice.items.map((i) => ({
+            name: i.product.name,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+          }))}
+          total={invoice.total}
+          currency={currency}
+          statusLabel={invoice.status === "COMPLETED" ? "Réglée" : "Annulée"}
+          onClose={() => setInvoice(null)}
+        />
+      )}
     </div>
   );
 }

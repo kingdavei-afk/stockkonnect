@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Pencil, Trash2, Printer, PackageX } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Printer, PackageX, RefreshCw } from "lucide-react";
 import { Modal, ConfirmDeleteButton, EmptyState } from "@/components/ui";
 import { formatMoney } from "@/lib/money";
 import { ExportButton } from "@/components/export-button";
@@ -316,11 +316,16 @@ export function ProductsClient({
             <div>
               <label className="label">Code-barres</label>
               <input
-                className="input"
+                className="input font-mono"
                 value={form.barcode}
                 onChange={(e) => setForm({ ...form, barcode: e.target.value })}
-                placeholder="Optionnel"
+                placeholder="Généré automatiquement si vide"
               />
+              {!form.barcode && (
+                <p className="mt-1 text-xs text-slate-400">
+                  Un code EAN-13 sera attribué automatiquement à l&apos;enregistrement.
+                </p>
+              )}
             </div>
             <div>
               <label className="label">Catégorie</label>

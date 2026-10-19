@@ -24,7 +24,17 @@ export default async function DashboardPage() {
         status: "COMPLETED",
         createdAt: { gte: monthStart },
       },
-      select: { total: true, createdAt: true },
+      select: {
+        total: true,
+        createdAt: true,
+        items: {
+          select: {
+            quantity: true,
+            unitPrice: true,
+            product: { select: { cost: true } },
+          },
+        },
+      },
     }),
     db.purchase.findMany({
       where: {
@@ -45,6 +55,16 @@ export default async function DashboardPage() {
   const stockValue = products.reduce((s, p) => s + p.cost * p.quantity, 0);
   const revenueMonth = salesMonth.reduce((s, sale) => s + sale.total, 0);
   const costMonth = purchasesMonth.reduce((s, p) => s + p.total, 0);
+  // Bénéfices réalisés : marge (prix de vente - coût d'achat) sur les ventes du mois
+  const profitMonth = salesMonth.reduce(
+    (sum, sale) =>
+      sum +
+      sale.items.reduce(
+        (s, i) => s + (i.unitPrice - i.product.cost) * i.quantity,
+        0
+      ),
+    0
+  );
   const lowStock = products
     .filter((p) => p.quantity <= p.minStock)
     .sort((a, b) => a.quantity - b.quantity);
@@ -85,6 +105,7 @@ export default async function DashboardPage() {
         totalUnits: products.reduce((s, p) => s + p.quantity, 0),
         stockValue,
         revenueMonth,
+        profitMonth,
         costMonth,
         salesCount: salesMonth.length,
         lowStockCount: lowStock.length,

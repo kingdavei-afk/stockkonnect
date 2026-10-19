@@ -63,4 +63,19 @@ td {
     height: fit-content;
     border: none;
   }
+  #invoice-print,
+  #invoice-print * {
+    visibility: visible;
+  }
+  #invoice-print {
+    position: fixed;
+    inset: 0;
+    margin: 0;
+    width: 100%;
+    max-width: none;
+    border: none;
+    box-shadow: none;
+    padding: 15mm;
+    background: white;
+  }
 }

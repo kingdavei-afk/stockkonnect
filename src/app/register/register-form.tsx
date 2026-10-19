@@ -15,12 +15,34 @@ export function RegisterForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    // Le `required` natif bloque les champs vides, mais pas les valeurs
+    // uniquement en espaces : on trim et on exige chaque champ ici.
+    const trimmedName = name.trim();
+    const trimmedOrg = organizationName.trim();
+    const trimmedWhatsapp = whatsappNumber.trim();
+    const trimmedEmail = email.trim();
+    if (!trimmedName || !trimmedOrg || !trimmedWhatsapp || !trimmedEmail || !password) {
+      setError("Tous les champs sont obligatoires.");
+      return;
+    }
+    if (password.trim().length < 6) {
+      setError("Mot de passe : 6 caractères minimum");
+      return;
+    }
+
+    setLoading(true);
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, organizationName, whatsappNumber, email, password }),
+      body: JSON.stringify({
+        name: trimmedName,
+        organizationName: trimmedOrg,
+        whatsappNumber: trimmedWhatsapp,
+        email: trimmedEmail,
+        password,
+      }),
     });
     setLoading(false);
     if (!res.ok) {
@@ -38,7 +60,7 @@ export function RegisterForm() {
         <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
       )}
       <div>
-        <label className="label" htmlFor="org">Nom de l&apos;entreprise</label>
+        <label className="label" htmlFor="org">Nom de l&apos;entreprise *</label>
         <input
           id="org"
           className="input"
@@ -49,7 +71,7 @@ export function RegisterForm() {
         />
       </div>
       <div>
-        <label className="label" htmlFor="whatsappNumber">Numéro WhatsApp</label>
+        <label className="label" htmlFor="whatsappNumber">Numéro WhatsApp *</label>
         <input
           id="whatsappNumber"
           type="tel"
@@ -62,7 +84,7 @@ export function RegisterForm() {
         />
       </div>
       <div>
-        <label className="label" htmlFor="name">Votre nom</label>
+        <label className="label" htmlFor="name">Votre nom *</label>
         <input
           id="name"
           className="input"
@@ -73,7 +95,7 @@ export function RegisterForm() {
         />
       </div>
       <div>
-        <label className="label" htmlFor="email">Email</label>
+        <label className="label" htmlFor="email">Email *</label>
         <input
           id="email"
           type="email"
@@ -85,7 +107,7 @@ export function RegisterForm() {
         />
       </div>
       <div>
-        <label className="label" htmlFor="password">Mot de passe</label>
+        <label className="label" htmlFor="password">Mot de passe *</label>
         <input
           id="password"
           type="password"
@@ -97,6 +119,7 @@ export function RegisterForm() {
           required
         />
       </div>
+      <p className="text-xs text-slate-500">* Champs obligatoires</p>
       <button type="submit" className="btn-primary w-full" disabled={loading}>
         {loading ? "Création…" : "Créer mon compte"}
       </button>

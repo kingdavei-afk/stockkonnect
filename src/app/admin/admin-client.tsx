@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Mail, MessageCircle, Pause, Phone, Play, Receipt, Search, ShieldAlert } from "lucide-react";
+import { Building2, Mail, MessageCircle, Pause, Pencil, Phone, Play, Receipt, Search, ShieldAlert } from "lucide-react";
 import {
   cycleLabel,
   formatAmount,
@@ -10,7 +10,12 @@ import {
   paymentStatusBadge,
   planLabel,
 } from "@/lib/payments";
+import { Modal } from "@/components/ui";
 import { PLANS, type PlanId } from "@/lib/plans";
+import { formatMoney } from "@/lib/money";
+import { AdminPaymentsExport } from "./admin-payments-export";
+
+const fmtAmount = (n: number) => formatMoney(n, "XOF");
 
 type Org = {
   id: string;
@@ -26,6 +31,9 @@ type Org = {
   trialEndsAt: string | null;
   status: string;
   createdAt: string;
+  profit: number;
+  ownerName: string | null;
+  ownerEmail: string | null;
   _count: { users: number; products: number; sales: number };
 };
 
@@ -51,7 +59,7 @@ type Revenue = {
 };
 
 export function AdminClient({
-  orgs: initial,
+  orgs,
   payments,
   revenue,
 }: {
@@ -60,23 +68,27 @@ export function AdminClient({
   revenue: Revenue;
 }) {
   const router = useRouter();
-  const [orgs, setOrgs] = useState(initial);
+  const [editedOrgs, setEditedOrgs] = useState(orgs);
   const [tab, setTab] = useState<"orgs" | "payments">("orgs");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "SUCCESS" | "PENDING" | "FAILED">("ALL");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", ownerName: "", ownerEmail: "" });
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editBusy, setEditBusy] = useState(false);
 
   const filteredOrgs = useMemo(
     () =>
-      orgs.filter(
+      editedOrgs.filter(
         (o) =>
           o.name.toLowerCase().includes(query.toLowerCase()) ||
           o.slug.includes(query.toLowerCase()) ||
           o.phone?.toLowerCase().includes(query.toLowerCase()) ||
           o.email?.toLowerCase().includes(query.toLowerCase())
       ),
-    [orgs, query]
+    [editedOrgs, query]
   );
 
   const filteredPayments = useMemo(
@@ -92,15 +104,64 @@ export function AdminClient({
     [payments, statusFilter, query]
   );
 
-  const totals = orgs.reduce(
+  const orgCount = orgs.length;
+
+  const totals = editedOrgs.reduce(
     (acc, o) => ({
       active: acc.active + (o.status === "ACTIVE" ? 1 : 0),
       suspended: acc.suspended + (o.status === "SUSPENDED" ? 1 : 0),
       users: acc.users + o._count.users,
       sales: acc.sales + o._count.sales,
+      profit: acc.profit + o.profit,
     }),
-    { active: 0, suspended: 0, users: 0, sales: 0 }
+    { active: 0, suspended: 0, users: 0, sales: 0, profit: 0 }
   );
+
+  function openEditForm(org: Org) {
+    setEditError(null);
+    setEditForm({
+      name: org.name,
+      phone: org.phone ?? "",
+      email: org.email ?? "",
+      ownerName: org.ownerName ?? "",
+      ownerEmail: org.ownerEmail ?? "",
+    });
+    setEditingId(org.id);
+  }
+
+  async function saveEdit() {
+    if (!editingId) return;
+    setEditBusy(true);
+    setEditError(null);
+    const res = await fetch("/api/admin/orgs", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: editingId, ...editForm }),
+    });
+    setEditBusy(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      setEditError(data?.error ?? "Erreur");
+      return;
+    }
+    const data = await res.json().catch(() => null);
+    setEditedOrgs((prev) =>
+      prev.map((o) =>
+        o.id === editingId
+          ? {
+              ...o,
+              name: data?.name ?? o.name,
+              phone: data?.phone ?? null,
+              email: data?.email ?? null,
+              ownerName: data?.owner?.name ?? o.ownerName,
+              ownerEmail: data?.owner?.email ?? o.ownerEmail,
+            }
+          : o
+      )
+    );
+    setEditingId(null);
+    router.refresh();
+  }
 
   async function toggleStatus(org: Org) {
     setBusyId(org.id);
@@ -117,7 +178,7 @@ export function AdminClient({
       setError(data?.error ?? "Erreur");
       return;
     }
-    setOrgs((prev) => prev.map((o) => (o.id === org.id ? { ...o, status: next } : o)));
+    setEditedOrgs((prev) => prev.map((o) => (o.id === org.id ? { ...o, status: next } : o)));
     router.refresh();
   }
 
@@ -136,17 +197,21 @@ export function AdminClient({
       setError(data?.error ?? "Impossible de modifier le plan");
       return;
     }
-    setOrgs((prev) => prev.map((item) => item.id === org.id
-      ? {
-          ...item,
-          plan: data.plan,
-          maxUsers: data.maxUsers,
-          maxProducts: data.maxProducts,
-          billingCycle: data.billingCycle,
-          planEndsAt: data.planEndsAt,
-          trialEndsAt: data.trialEndsAt,
-        }
-      : item));
+    setEditedOrgs((prev) =>
+      prev.map((item) =>
+        item.id === org.id
+          ? {
+              ...item,
+              plan: data.plan,
+              maxUsers: data.maxUsers,
+              maxProducts: data.maxProducts,
+              billingCycle: data.billingCycle,
+              planEndsAt: data.planEndsAt,
+              trialEndsAt: data.trialEndsAt,
+            }
+          : item
+      )
+    );
     router.refresh();
   }
 
@@ -163,7 +228,8 @@ export function AdminClient({
     const date = org.plan === "GRATUIT" ? org.trialEndsAt : org.planEndsAt;
     if (!date) return "—";
     const formatted = new Date(date).toLocaleDateString("fr-FR");
-    if (org.plan === "GRATUIT") return new Date(date) > new Date() ? `Essai jusqu’au ${formatted}` : `Essai terminé le ${formatted}`;
+    if (org.plan === "GRATUIT")
+      return new Date(date) > new Date() ? `Essai jusqu'au ${formatted}` : `Essai terminé le ${formatted}`;
     return `Le ${formatted}`;
   }
 
@@ -171,15 +237,25 @@ export function AdminClient({
     if (!org.phone) return null;
     const raw = org.phone.trim();
     const digits = raw.replace(/\D/g, "");
-    const internationalNumber = raw.startsWith("+")
-      ? digits
-      : digits.startsWith("00")
-        ? digits.slice(2)
-        : digits.startsWith("225")
-          ? digits
-          : `225${digits.replace(/^0/, "")}`;
+    const internationalNumber =
+      raw.startsWith("+")
+        ? digits
+        : digits.startsWith("00")
+          ? digits.slice(2)
+          : digits.startsWith("225")
+            ? digits
+            : `225${digits.replace(/^0/, "")}`;
     if (internationalNumber.length < 8) return null;
-    const message = `Bonjour, je vous contacte au sujet de votre entreprise ${org.name} sur Stockkonect.`;
+    const salutation = org.ownerName?.trim()
+      ? `Bonjour ${org.ownerName.trim()},`
+      : "Bonjour,";
+    const message = [
+      `${salutation} votre établissement ${org.name} vient d'activer son essai gratuit Stockkonect.`,
+      "",
+      "Vous avez un accès complet à l'application (caisse, stock, clients, résultats) pendant une période d'essai.",
+      "",
+      "Pour toute question, contactez le support au +225 07 48323191 pour être accompagné.",
+    ].join("\n");
     return `https://wa.me/${internationalNumber}?text=${encodeURIComponent(message)}`;
   }
 
@@ -251,7 +327,7 @@ export function AdminClient({
       </div>
 
       {/* Onglets */}
-      <div className="mt-6 flex gap-2">
+      <div className="mt-6 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => setTab("orgs")}
@@ -268,6 +344,7 @@ export function AdminClient({
           <Receipt className="h-4 w-4" />
           Paiements ({payments.length})
         </button>
+        <AdminPaymentsExport orgCount={orgCount} />
       </div>
 
       {error && (
@@ -286,6 +363,7 @@ export function AdminClient({
                   <th>Utilisateurs</th>
                   <th>Produits</th>
                   <th>Ventes</th>
+                  <th>Bénéfices</th>
                   <th>Inscrite le</th>
                   <th>Statut</th>
                   <th className="text-right">Action</th>
@@ -295,98 +373,120 @@ export function AdminClient({
                 {filteredOrgs.map((o) => {
                   const whatsapp = whatsappUrl(o);
                   return (
-                  <tr key={o.id} className={`hover:bg-slate-50 ${o.status === "SUSPENDED" ? "opacity-60" : ""}`}>
-                    <td>
-                      <p className="flex items-center gap-2 font-medium">
-                        <Building2 className="h-4 w-4 text-slate-400" />
-                        {o.name}
-                      </p>
-                      <p className="text-xs text-slate-400">{o.slug}</p>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                        {o.phone ? (
-                          <a href={`tel:${o.phone}`} className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900">
-                            <Phone className="h-3 w-3" />
-                            {o.phone}
-                          </a>
-                        ) : (
-                          <span className="text-slate-400">Téléphone non renseigné</span>
-                        )}
-                        {o.email ? (
-                          <a href={`mailto:${o.email}`} className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900">
-                            <Mail className="h-3 w-3" />
-                            {o.email}
-                          </a>
-                        ) : (
-                          <span className="text-slate-400">E-mail non renseigné</span>
-                        )}
-                        {whatsapp && (
-                          <a
-                            href={whatsapp}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`Contacter ${o.name} sur WhatsApp`}
-                            title={`Contacter ${o.name} sur WhatsApp`}
-                            className="inline-flex items-center gap-1 font-medium text-emerald-700 hover:text-emerald-800"
+                    <tr
+                      key={o.id}
+                      className={`hover:bg-slate-50 ${o.status === "SUSPENDED" ? "opacity-60" : ""}`}
+                    >
+                      <td>
+                        <p className="flex items-center gap-2 font-medium">
+                          <Building2 className="h-4 w-4 text-slate-400" />
+                          {o.name}
+                        </p>
+                        <p className="text-xs text-slate-400">{o.slug}</p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                          {o.phone ? (
+                            <a href={`tel:${o.phone}`} className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900">
+                              <Phone className="h-3 w-3" />
+                              {o.phone}
+                            </a>
+                          ) : (
+                            <span className="text-slate-400">Téléphone non renseigné</span>
+                          )}
+                          {o.email ? (
+                            <a href={`mailto:${o.email}`} className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900">
+                              <Mail className="h-3 w-3" />
+                              {o.email}
+                            </a>
+                          ) : (
+                            <span className="text-slate-400">E-mail non renseigné</span>
+                          )}
+                          {whatsapp && (
+                            <a
+                              href={whatsapp}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`Envoyer le message de bienvenue à ${o.ownerName ?? o.name} via WhatsApp`}
+                              title={`Envoyer le message de bienvenue à ${o.ownerName ?? o.name} via WhatsApp`}
+                              className="inline-flex items-center gap-1 font-medium text-emerald-700 hover:text-emerald-800"
+                            >
+                              <MessageCircle className="h-3.5 w-3.5" />
+                              WhatsApp
+                            </a>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <select
+                          className="input min-w-32 !py-1.5 text-xs"
+                          value={o.plan === "GRATUIT" ? "GRATUIT" : `${o.plan}:${o.billingCycle ?? "monthly"}`}
+                          disabled={busyId === o.id}
+                          aria-label={`Plan de ${o.name}`}
+                          onChange={(event) => handlePlanChange(o, event.target.value)}
+                        >
+                          <option value="GRATUIT">Gratuit · essai de 7 jours</option>
+                          {PLANS.filter((plan) => plan.id !== "GRATUIT").flatMap((plan) => [
+                            <option key={`${plan.id}:monthly`} value={`${plan.id}:monthly`}>
+                              {planLabel(plan.id)} · mensuel
+                            </option>,
+                            <option key={`${plan.id}:yearly`} value={`${plan.id}:yearly`}>
+                              {planLabel(plan.id)} · annuel
+                            </option>,
+                          ])}
+                        </select>
+                      </td>
+                      <td className="whitespace-nowrap text-xs text-slate-500">{expirationLabel(o)}</td>
+                      <td className="font-mono">{o._count.users} / {o.maxUsers}</td>
+                      <td className="font-mono">{o._count.products}</td>
+                      <td className="font-mono">{o._count.sales}</td>
+                      <td className="font-mono">
+                        {o.profit != null ? fmtAmount(o.profit) : "—"}
+                      </td>
+                      <td className="whitespace-nowrap text-slate-500">
+                        {new Date(o.createdAt).toLocaleDateString("fr-FR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                        })}{" "}
+                        à{" "}
+                        {new Date(o.createdAt).toLocaleTimeString("fr-FR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </td>
+                      <td>
+                        <span
+                          className={`badge ${o.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}
+                        >
+                          {o.status === "ACTIVE" ? "Active" : "Suspendue"}
+                        </span>
+                      </td>
+                      <td className="text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            className="btn-secondary !px-3 !py-1.5 text-xs"
+                            disabled={busyId === o.id || editBusy}
+                            onClick={() => openEditForm(o)}
                           >
-                            <MessageCircle className="h-3.5 w-3.5" />
-                            WhatsApp
-                          </a>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <select
-                        className="input min-w-32 !py-1.5 text-xs"
-                        value={o.plan === "GRATUIT" ? "GRATUIT" : `${o.plan}:${o.billingCycle ?? "monthly"}`}
-                        disabled={busyId === o.id}
-                        aria-label={`Plan de ${o.name}`}
-                        onChange={(event) => handlePlanChange(o, event.target.value)}
-                      >
-                        <option value="GRATUIT">Gratuit · essai de 7 jours</option>
-                        {PLANS.filter((plan) => plan.id !== "GRATUIT").flatMap((plan) => ([
-                          <option key={`${plan.id}:monthly`} value={`${plan.id}:monthly`}>{planLabel(plan.id)} · mensuel</option>,
-                          <option key={`${plan.id}:yearly`} value={`${plan.id}:yearly`}>{planLabel(plan.id)} · annuel</option>,
-                        ]))}
-                      </select>
-                    </td>
-                    <td className="whitespace-nowrap text-xs text-slate-500">{expirationLabel(o)}</td>
-                    <td className="font-mono">
-                      {o._count.users} / {o.maxUsers}
-                    </td>
-                    <td className="font-mono">{o._count.products}</td>
-                    <td className="font-mono">{o._count.sales}</td>
-                    <td className="whitespace-nowrap text-slate-500">
-                      {new Date(o.createdAt).toLocaleDateString("fr-FR")}
-                    </td>
-                    <td>
-                      <span
-                        className={`badge ${
-                          o.status === "ACTIVE"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {o.status === "ACTIVE" ? "Active" : "Suspendue"}
-                      </span>
-                    </td>
-                    <td className="text-right">
-                      <button
-                        className="btn-secondary !px-3 !py-1.5 text-xs"
-                        disabled={busyId === o.id}
-                        onClick={() => toggleStatus(o)}
-                      >
-                        {o.status === "ACTIVE" ? (
-                          <>
-                            <Pause className="h-3 w-3" /> Suspendre
-                          </>
-                        ) : (
-                          <>
-                            <Play className="h-3 w-3" /> Réactiver
-                          </>
-                        )}
-                      </button>
-                    </td>
-                  </tr>
+                            <Pencil className="h-3 w-3" /> Fiche
+                          </button>
+                          <button
+                            className="btn-secondary !px-3 !py-1.5 text-xs"
+                            disabled={busyId === o.id || editBusy}
+                            onClick={() => toggleStatus(o)}
+                          >
+                            {o.status === "ACTIVE" ? (
+                              <>
+                                <Pause className="h-3 w-3" /> Suspendre
+                              </>
+                            ) : (
+                              <>
+                                <Play className="h-3 w-3" /> Réactiver
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   );
                 })}
               </tbody>
@@ -442,9 +542,7 @@ export function AdminClient({
                           {cycleLabel(p.cycle) ? ` · ${cycleLabel(p.cycle)}` : ""}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap font-semibold">
-                        {formatAmount(p.amount)} F CFA
-                      </td>
+                      <td className="whitespace-nowrap font-semibold">{formatAmount(p.amount)} F CFA</td>
                       <td>
                         <span className={`badge ${badge.className}`}>{badge.label}</span>
                       </td>
@@ -466,6 +564,83 @@ export function AdminClient({
           </div>
         </div>
       )}
+
+      {/* Modal édition de la fiche entreprise + propriétaire */}
+      <Modal
+        open={editingId !== null}
+        onClose={() => setEditingId(null)}
+        title="Modifier la fiche entreprise"
+      >
+        {editError && (
+          <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{editError}</div>
+        )}
+        <div className="mt-3 space-y-3">
+          <div>
+            <label className="label" htmlFor="edit-org-name">Nom de l&apos;entreprise *</label>
+            <input
+              id="edit-org-name"
+              className="input"
+              value={editForm.name}
+              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="edit-org-phone">Numéro WhatsApp</label>
+            <input
+              id="edit-org-phone"
+              type="tel"
+              className="input"
+              value={editForm.phone}
+              placeholder="Ex : +225 07 48 32 31 91 (vide pour effacer)"
+              onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="edit-org-email">Email d&apos;entreprise</label>
+            <input
+              id="edit-org-email"
+              type="email"
+              className="input"
+              value={editForm.email}
+              placeholder="vide pour effacer"
+              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+            />
+          </div>
+          <div className="border-t border-slate-100 pt-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Compte propriétaire
+            </p>
+            <div>
+              <label className="label" htmlFor="edit-owner-name">Nom du propriétaire *</label>
+              <input
+                id="edit-owner-name"
+                className="input"
+                value={editForm.ownerName}
+                onChange={(e) => setEditForm({ ...editForm, ownerName: e.target.value })}
+              />
+            </div>
+            <div className="mt-3">
+              <label className="label" htmlFor="edit-owner-email">Email du propriétaire</label>
+              <input
+                id="edit-owner-email"
+                type="email"
+                className="input"
+                value={editForm.ownerEmail}
+                placeholder="vide pour conserver l'email actuel"
+                onChange={(e) => setEditForm({ ...editForm, ownerEmail: e.target.value })}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" className="btn-secondary" onClick={() => setEditingId(null)} disabled={editBusy}>
+            Annuler
+          </button>
+          <button type="button" className="btn-primary" onClick={saveEdit} disabled={editBusy}>
+            {editBusy ? "Enregistrement…" : "Enregistrer"}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

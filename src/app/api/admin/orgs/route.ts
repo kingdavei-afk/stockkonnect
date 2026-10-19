@@ -38,9 +38,32 @@ const patchSchema = z.object({
   status: z.enum(["ACTIVE", "SUSPENDED"]).optional(),
   planId: z.enum(["GRATUIT", "STARTER", "PRO", "BUSINESS"]).optional(),
   billingCycle: z.enum(["monthly", "yearly"]).optional(),
-}).refine((data) => data.status !== undefined || data.planId !== undefined, {
-  message: "Aucune modification demandée",
-}).refine((data) => data.billingCycle === undefined || data.planId !== undefined, {
+  // Fiche entreprise (modifiable par un super-admin)
+  name: z.string().trim().min(2, "Nom d'entreprise trop court").optional(),
+  phone: z
+    .string()
+    .trim()
+    .max(30, "Numéro WhatsApp trop long")
+    .regex(/^(?:\+|00)?[\d\s().-]*$/, "Numéro WhatsApp invalide")
+    .refine((value) => {
+      const digitCount = value.replace(/\D/g, "").length;
+      return value === "" || (digitCount >= 8 && digitCount <= 15);
+    }, "Numéro WhatsApp invalide")
+    .optional(),
+  email: z.string().trim().email("Email d'entreprise invalide").or(z.literal("")).optional(),
+  ownerName: z.string().trim().min(2, "Nom trop court").or(z.literal("")).optional(),
+  ownerEmail: z.string().trim().email("Email du propriétaire invalide").or(z.literal("")).optional(),
+}).refine(
+  (data) =>
+    data.status !== undefined ||
+    data.planId !== undefined ||
+    data.name !== undefined ||
+    data.phone !== undefined ||
+    data.email !== undefined ||
+    data.ownerName !== undefined ||
+    data.ownerEmail !== undefined,
+  { message: "Aucune modification demandée" }
+).refine((data) => data.billingCycle === undefined || data.planId !== undefined, {
   message: "Un cycle nécessite un plan",
 });
 
@@ -54,10 +77,39 @@ export async function PATCH(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Données invalides" }, { status: 400 });
   }
-  const { id, status, planId, billingCycle } = parsed.data;
+  const { id, status, planId, billingCycle, name, phone, email, ownerName, ownerEmail } = parsed.data;
 
   const org = await db.organization.findUnique({ where: { id } });
   if (!org) return NextResponse.json({ error: "Entreprise introuvable" }, { status: 404 });
+
+  // Le compte propriétaire est le premier utilisateur créé de l'organisation.
+  // Chaines vides = "conserver" : ne déclenchent pas la recherche du proprio.
+  const wantsOwnerEdit = Boolean(ownerName) || Boolean(ownerEmail);
+  const owner = wantsOwnerEdit
+    ? await db.user.findFirst({
+        where: { organizationId: id },
+        orderBy: { createdAt: "asc" },
+      })
+    : null;
+  if (wantsOwnerEdit && !owner) {
+    return NextResponse.json({ error: "Utilisateur propriétaire introuvable" }, { status: 404 });
+  }
+  if (wantsOwnerEdit && owner && ownerEmail && ownerEmail !== owner.email) {
+    const taken = await db.user.findFirst({
+      where: { email: ownerEmail, NOT: { id: owner.id } },
+    });
+    if (taken) {
+      return NextResponse.json({ error: "Cet email est déjà utilisé" }, { status: 409 });
+    }
+  }
+  if (email) {
+    const taken = await db.organization.findFirst({
+      where: { email, NOT: { id } },
+    });
+    if (taken) {
+      return NextResponse.json({ error: "Cet email d'entreprise est déjà utilisé" }, { status: 409 });
+    }
+  }
 
   let planSettings = {};
   if (planId) {
@@ -87,7 +139,13 @@ export async function PATCH(req: NextRequest) {
 
   const updated = await db.organization.update({
     where: { id },
-    data: { ...(status !== undefined ? { status } : {}), ...planSettings },
+    data: {
+      ...(status !== undefined ? { status } : {}),
+      ...(name !== undefined ? { name } : {}),
+      ...(phone !== undefined ? { phone: phone || null } : {}),
+      ...(email !== undefined ? { email: email || null } : {}),
+      ...planSettings,
+    },
     select: {
       id: true,
       name: true,
@@ -98,7 +156,23 @@ export async function PATCH(req: NextRequest) {
       billingCycle: true,
       planEndsAt: true,
       trialEndsAt: true,
+      phone: true,
+      email: true,
     },
   });
-  return NextResponse.json(updated);
+  if (owner && (ownerName || ownerEmail)) {
+    await db.user.update({
+      where: { id: owner.id },
+      data: {
+        ...(ownerName ? { name: ownerName } : {}),
+        ...(ownerEmail ? { email: ownerEmail } : {}),
+      },
+    });
+  }
+  const freshOwner = await db.user.findFirst({
+    where: { organizationId: id },
+    orderBy: { createdAt: "asc" },
+    select: { name: true, email: true },
+  });
+  return NextResponse.json({ ...updated, owner: { name: freshOwner?.name ?? null, email: freshOwner?.email ?? null } });
 }

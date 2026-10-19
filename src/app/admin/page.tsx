@@ -30,6 +30,8 @@ export default async function AdminPage() {
         trialEndsAt: true,
         status: true,
         createdAt: true,
+        // Premier utilisateur (proprio du compte) pour le message WhatsApp de bienvenue
+        users: { select: { name: true, email: true }, orderBy: { createdAt: "asc" }, take: 1 },
         _count: { select: { users: true, products: true, sales: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -61,19 +63,49 @@ export default async function AdminPage() {
       where: { status: "SUCCESS" },
       _sum: { amount: true },
       _count: true,
-    }),
-  ]);
+    }),    ]);
+
+  // Calcul des bénéfices par organisation
+  const allSales = await db.sale.findMany({
+    where: {
+      status: "COMPLETED",
+      organizationId: { in: orgs.map(o => o.id) }
+    },
+    include: {
+      items: {
+        include: {
+          product: { select: { cost: true } }
+        }
+      }
+    }
+  });
+
+  const profitsByOrg = new Map<string, number>();
+  for (const org of orgs) {
+    profitsByOrg.set(org.id, 0);
+  }
+  for (const sale of allSales) {
+    const orgProfit = sale.items.reduce((sum, item) => {
+      return sum + (item.unitPrice - (item.product.cost || 0)) * item.quantity;
+    }, 0);
+    profitsByOrg.set(sale.organizationId, (profitsByOrg.get(sale.organizationId) || 0) + orgProfit);
+  }
+
+  const orgsWithProfit = orgs.map((o) => ({
+    ...o,
+    ownerName: o.users[0]?.name ?? null,
+    ownerEmail: o.users[0]?.email ?? null,
+    profit: profitsByOrg.get(o.id) ?? 0,
+    createdAt: o.createdAt.toISOString(),
+    planEndsAt: o.planEndsAt?.toISOString() ?? null,
+    trialEndsAt: o.trialEndsAt?.toISOString() ?? null,
+  }));
 
   return (
     <AdminShell userName={account.name} logout={<LogoutButton />}>
       <AdminAccountSettings email={account.email} />
       <AdminClient
-        orgs={orgs.map((o) => ({
-          ...o,
-          createdAt: o.createdAt.toISOString(),
-          planEndsAt: o.planEndsAt?.toISOString() ?? null,
-          trialEndsAt: o.trialEndsAt?.toISOString() ?? null,
-        }))}
+        orgs={orgsWithProfit}
         payments={payments.map((p) => ({
           id: p.id,
           transactionId: p.transactionId,
