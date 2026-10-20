@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { startSession } from "@/lib/auth";
+import { authRateLimit, clientIp, rateLimitMessage } from "@/lib/auth-rate-limit";
 
 function slugify(name: string) {
   return name
@@ -37,6 +38,23 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
+  const ip = clientIp(req);
+
+  // Limitation avant toute lecture en base et avant la validation : la réponse
+  // 429 ne dépend donc pas de l'existence du compte (aucun oracle d'énumération)
+  // et un essai bloqué ne coûte ni requête SQL ni hachage bcrypt.
+  const attemptedEmail =
+    body !== null && typeof body === "object" && typeof (body as { email?: unknown }).email === "string"
+      ? (body as { email: string }).email
+      : null;
+  const limit = await authRateLimit.check("register", { identifier: attemptedEmail, ip });
+  if (limit.limited) {
+    return NextResponse.json(
+      { error: rateLimitMessage("register", limit.retryAfterSeconds) },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } }
+    );
+  }
+
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
@@ -45,6 +63,10 @@ export async function POST(req: NextRequest) {
     );
   }
   const { name, email, password, organizationName, whatsappNumber } = parsed.data;
+
+  // Toute demande valide est comptée, y compris une inscription réussie :
+  // c'est précisément la répétition que la limite doit freiner.
+  await authRateLimit.record("register", { identifier: email, ip });
 
   const existing = await db.user.findUnique({ where: { email } });
   if (existing) {

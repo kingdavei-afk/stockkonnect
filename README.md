@@ -85,8 +85,21 @@ Sécurité : le webhook ne fait jamais confiance au POST reçu — le `notify_to
 | `npm run build` | Build de production |
 | `npm start` | Serveur de production |
 | `npm run lint` | ESLint |
+| `npm test` | Tests unitaires (limitation des tentatives, normalisation des identifiants) |
+| `npm run test:e2e` | Build puis tests HTTP réels contre `next start` (base requise) |
 | `npm run db:seed` | Insère les données de démo |
 | `npx prisma studio` | Explorateur de base de données |
+
+## Limitation des tentatives d'authentification
+
+Les échecs sont horodatés en base (`AuthRateLimitEvent`, clés condensées SHA-256) pour rester efficaces sur Vercel, où chaque requête peut viser une instance différente :
+
+- **Connexion** : 5 échecs / 15 min par identifiant, 20 / 15 min par IP. Le blocage intervient avant `bcrypt` ; une connexion réussie remet le compteur de l'identifiant à zéro.
+- **Inscription** : 5 demandes / heure par email, 10 / heure par IP. Toute demande valide est comptée (y compris réussie), et le contrôle précède la validation : une réponse `429` ne révèle pas si l'email existe.
+
+Réponse : `429` + en-tête `Retry-After` + message français. Les numéros WhatsApp sont comparés sur leurs 9 derniers chiffres, donc `+225…`, `00225…` et `07 99…` partagent un seul compteur.
+
+Tests : `npm test` (sans base) et `npm run test:e2e` (build + serveur réel, fixtures jetables supprimées à la fin).
 
 ## Structure
 

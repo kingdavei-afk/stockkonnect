@@ -4,6 +4,8 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { startSession } from "@/lib/auth";
+import { isEmailLike, isSameWhatsapp, whatsappDigits } from "@/lib/login-identifier";
+import { authRateLimit, clientIp, rateLimitMessage } from "@/lib/auth-rate-limit";
 
 const schema = z.object({
   // Identifiant de connexion : email ou numéro WhatsApp (normalisé côté serveur).
@@ -16,38 +18,6 @@ const ORG_INCLUDE = {
 } satisfies Prisma.UserInclude;
 
 type LoginUser = Prisma.UserGetPayload<{ include: typeof ORG_INCLUDE }>;
-
-function isEmailLike(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
-/**
- * Réduit un numéro WhatsApp à ses chiffres (le préfixe international 00 est
- * retiré). Renvoie null si la saisie ne peut pas être un numéro.
- */
-function whatsappDigits(raw: string): string | null {
-  let digits = raw.replace(/\D/g, "");
-  if (digits.startsWith("00")) digits = digits.slice(2);
-  return digits.length >= 8 && digits.length <= 15 ? digits : null;
-}
-
-/**
- * Compare deux numéros WhatsApp. Les numéros sont saisis librement (`+225…`,
- * `00225…`, `07 00 00 00 00`…), on compare donc les 9 derniers chiffres
- * significatifs quand les écritures complètes diffèrent.
- */
-function isSameWhatsapp(a: string, b: string): boolean {
-  const digitsA = whatsappDigits(a);
-  const digitsB = whatsappDigits(b);
-  if (!digitsA || !digitsB) return false;
-  if (digitsA === digitsB) return true;
-  const size = 9;
-  return (
-    digitsA.length >= size &&
-    digitsB.length >= size &&
-    digitsA.slice(-size) === digitsB.slice(-size)
-  );
-}
 
 async function findCandidates(identifier: string): Promise<LoginUser[]> {
   if (isEmailLike(identifier)) {
@@ -88,6 +58,17 @@ export async function POST(req: NextRequest) {
     );
   }
   const { identifier, password } = parsed.data;
+  const ip = clientIp(req);
+
+  // Bloque avant toute vérification : sans cela, un essai de mot de passe
+  // coûterait un bcrypt.compare par compte partageant le numéro WhatsApp.
+  const limit = await authRateLimit.check("login", { identifier, ip });
+  if (limit.limited) {
+    return NextResponse.json(
+      { error: rateLimitMessage("login", limit.retryAfterSeconds) },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } }
+    );
+  }
 
   const candidates = await findCandidates(identifier);
 
@@ -103,6 +84,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Mot de passe correct : la saisie n'était pas une attaque, on remet le
+    // compteur de cet identifiant à zéro.
+    await authRateLimit.clear("login", { identifier });
     await startSession({
       userId: user.id,
       orgId: user.organizationId ?? "",
@@ -112,6 +96,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, role: user.role });
   }
 
+  await authRateLimit.record("login", { identifier, ip });
   return NextResponse.json(
     { error: "Identifiant ou mot de passe incorrect" },
     { status: 401 }

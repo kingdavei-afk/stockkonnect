@@ -19,6 +19,18 @@ model User {
   createdAt      DateTime      @default(now())
 }
 
+/// Tentative d'authentification horodatée (connexion, inscription), utilisée
+/// pour limiter les répétitions. `key` est un condensat (identifiant saisi ou
+/// adresse IP), jamais la valeur brute.
+model AuthRateLimitEvent {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+  @@index([createdAt])
+}
+
 model Organization {
   id           String   @id @default(cuid())
   name         String
