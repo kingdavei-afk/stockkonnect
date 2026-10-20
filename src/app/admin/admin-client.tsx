@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Mail, MessageCircle, Pause, Pencil, Phone, Play, Receipt, Search, ShieldAlert } from "lucide-react";
+import { Building2, Mail, MessageCircle, Pause, Pencil, Phone, Play, Receipt, Search, ShieldAlert, Trash } from "lucide-react";
 import {
   cycleLabel,
   formatAmount,
@@ -78,6 +78,9 @@ export function AdminClient({
   const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", ownerName: "", ownerEmail: "" });
   const [editError, setEditError] = useState<string | null>(null);
   const [editBusy, setEditBusy] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const filteredOrgs = useMemo(
     () =>
@@ -160,6 +163,23 @@ export function AdminClient({
       )
     );
     setEditingId(null);
+    router.refresh();
+  }
+
+  async function deleteOrg(org: Org) {
+    setDeleteBusy(true);
+    setDeleteError(null);
+    const res = await fetch(`/api/admin/orgs/${org.id}`, {
+      method: "DELETE",
+    });
+    setDeleteBusy(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      setDeleteError(data?.error ?? "Erreur");
+      return;
+    }
+    setEditedOrgs((prev) => prev.filter((item) => item.id !== org.id));
+    setDeletingId(null);
     router.refresh();
   }
 
@@ -484,6 +504,13 @@ export function AdminClient({
                               </>
                             )}
                           </button>
+                          <button
+                            className="btn-danger-dangerous !px-3 !py-1.5 text-xs"
+                            disabled={busyId === o.id || editBusy || deletingId === o.id || deleteBusy}
+                            onClick={() => setDeletingId(o.id)}
+                          >
+                            <Trash className="h-3 w-3" /> Supprimer
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -638,6 +665,47 @@ export function AdminClient({
           </button>
           <button type="button" className="btn-primary" onClick={saveEdit} disabled={editBusy}>
             {editBusy ? "Enregistrement…" : "Enregistrer"}
+          </button>
+        </div>
+      </Modal>
+
+      {/* Modal de suppression d'une entreprise */}
+      <Modal
+        open={deletingId !== null}
+        onClose={() => setDeletingId(null)}
+        title="Supprimer cette entreprise ?"
+      >
+        {deleteError && (
+          <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{deleteError}</div>
+        )}
+        <div className="mt-3 space-y-3">
+          <p>
+            Cette action supprime l&apos;entreprise <strong>{editedOrgs.find((o) => o.id === deletingId)?.name}</strong>
+            ainsi que tous ses utilisateurs et données associées.
+          </p>
+          <p className="text-sm text-slate-500">
+            Cette action est irréversible. Assurez-vous que l&apos;entreprise n&apos;est plus utilisée avant de continuer.
+          </p>
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setDeletingId(null)}
+            disabled={deleteBusy}
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            className="btn-primary !bg-red-600 !text-white hover:!bg-red-700"
+            onClick={() => {
+              const org = editedOrgs.find((o) => o.id === deletingId);
+              if (org) void deleteOrg(org);
+            }}
+            disabled={deleteBusy}
+          >
+            {deleteBusy ? "Suppression…" : "Supprimer cette entreprise"}
           </button>
         </div>
       </Modal>

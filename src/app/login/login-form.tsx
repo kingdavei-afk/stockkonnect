@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 export function LoginForm({ accountUpdated = false }: { accountUpdated?: boolean }) {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -17,7 +17,7 @@ export function LoginForm({ accountUpdated = false }: { accountUpdated?: boolean
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ identifier, password }),
     });
     setLoading(false);
     if (!res.ok) {
@@ -41,14 +41,17 @@ export function LoginForm({ accountUpdated = false }: { accountUpdated?: boolean
         <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
       )}
       <div>
-        <label className="label" htmlFor="email">Email</label>
+        <label className="label" htmlFor="identifier">Email ou numéro WhatsApp</label>
         <input
-          id="email"
-          type="email"
+          id="identifier"
+          type="text"
           className="input"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="vous@entreprise.fr"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+          placeholder="vous@entreprise.fr ou 07 00 00 00 00"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
           required
         />
       </div>
@@ -61,6 +64,7 @@ export function LoginForm({ accountUpdated = false }: { accountUpdated?: boolean
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="••••••••"
+          autoComplete="current-password"
           required
         />
       </div>
