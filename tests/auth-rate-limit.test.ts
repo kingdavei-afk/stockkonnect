@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
   AUTH_RATE_LIMITS,
+  AUTH_RATE_LIMIT_PURGE_INTERVAL_MS,
+  AUTH_RATE_LIMIT_RETENTION_MS,
   clientIp,
   createAuthRateLimiter,
   digest,
+  identifierScopeKey,
   rateLimitKey,
   rateLimitMessage,
   type AuthRateLimitStore,
@@ -17,6 +20,10 @@ import {
 
 class MemoryStore implements AuthRateLimitStore {
   readonly events = new Map<string, number[]>();
+  /** Dates des purges déclenchées, pour vérifier leur cadence. */
+  readonly purges: Date[] = [];
+  /** Simule une purge en échec. */
+  failPurge = false;
 
   constructor(private readonly now: () => number) {}
 
@@ -39,6 +46,8 @@ class MemoryStore implements AuthRateLimitStore {
   }
 
   async purgeBefore(date: Date) {
+    this.purges.push(date);
+    if (this.failPurge) throw new Error("purge impossible");
     for (const [key, list] of this.events) {
       const kept = list.filter((at) => at >= date.getTime());
       if (kept.length > 0) this.events.set(key, kept);
@@ -51,7 +60,7 @@ function setup() {
   let clock = Date.UTC(2026, 9, 20, 12, 0, 0);
   const now = () => clock;
   const store = new MemoryStore(now);
-  const limiter = createAuthRateLimiter({ store, now, random: () => 0.5 });
+  const limiter = createAuthRateLimiter({ store, now });
   return {
     store,
     limiter,
@@ -63,6 +72,7 @@ function setup() {
 }
 
 const MINUTE = 60 * 1000;
+const HOUR = 60 * MINUTE;
 /** Même numéro WhatsApp, écrit de cinq façons différentes. */
 const WHATSAPP_VARIANTS = [
   "+225 07 99 88 77 66",
@@ -101,6 +111,43 @@ describe("limitation de la connexion", () => {
     const after = await limiter.check("login", { identifier });
     assert.equal(after.limited && after.retryAfterSeconds, 14 * 60);
     assert.equal(store.events.get(rateLimitKey("login", "id", identifier))?.length, 5);
+  });
+
+  test("la fenêtre glisse : les événements sortent un par un", async () => {
+    const { limiter, advance } = setup();
+    const identifier = "demo@example.fr";
+
+    // Trois échecs puis, dix minutes plus tard, deux autres.
+    for (let i = 0; i < 3; i++) await limiter.record("login", { identifier, ip: "10.0.10.1" });
+    advance(10 * MINUTE);
+    for (let i = 0; i < 2; i++) await limiter.record("login", { identifier, ip: "10.0.10.1" });
+
+    const blocked = await limiter.check("login", { identifier, ip: "10.0.10.1" });
+    assert.equal(blocked.limited, true);
+    // Le délai correspond au plus ancien événement, pas à un bloc entier.
+    assert.equal(blocked.limited && blocked.retryAfterSeconds, 5 * 60);
+
+    // Passé la fenêtre du plus ancien, seuls les deux récents subsistent :
+    // une fenêtre fixe les aurait tous gardés jusqu'au prochain quart d'heure.
+    advance(5 * MINUTE + 1000);
+    assert.deepEqual(await limiter.check("login", { identifier, ip: "10.0.10.1" }), {
+      limited: false,
+    });
+  });
+
+  test("le délai restant suit la sortie du plus ancien événement", async () => {
+    const { limiter, advance } = setup();
+    const identifier = "demo@example.fr";
+    for (let i = 0; i < 5; i++) await limiter.record("login", { identifier, ip: "10.0.11.1" });
+
+    const initial = await limiter.check("login", { identifier });
+    assert.equal(initial.limited, true);
+    assert.equal(initial.limited && initial.retryAfterSeconds, 15 * 60);
+
+    advance(5 * MINUTE);
+    const after = await limiter.check("login", { identifier });
+    assert.equal(after.limited, true);
+    assert.equal(after.limited && after.retryAfterSeconds, 10 * 60);
   });
 
   test("les écritures d'un même numéro partagent un seul compteur", async () => {
@@ -208,34 +255,88 @@ describe("limitation de la connexion", () => {
       assert.ok(!key.includes(ip));
     }
   });
+});
 
-  test("purge les événements plus vieux que la rétention", async () => {
-    const clock = Date.UTC(2026, 9, 20, 12, 0, 0);
-    const now = () => clock;
-    const store = new MemoryStore(now);
-    const limiter = createAuthRateLimiter({ store, now, random: () => 0 });
-
+describe("purge automatique", () => {
+  test("supprime les événements plus vieux que la rétention", async () => {
+    const { limiter, store, now } = setup();
     const oldKey = rateLimitKey("login", "id", "vieux@example.fr");
-    store.events.set(oldKey, [clock - 25 * 60 * MINUTE]);
+    store.events.set(oldKey, [now() - AUTH_RATE_LIMIT_RETENTION_MS - 60 * MINUTE]);
+
     await limiter.record("login", { identifier: "recent@example.fr", ip: "10.0.8.1" });
 
     assert.equal(store.events.has(oldKey), false);
-    assert.equal(store.events.size, 2);
+    assert.equal(store.events.size, 2, "seuls l'identifiant et l'IP restent");
+  });
+
+  test("ne se répète pas avant une heure, puis reprend", async () => {
+    const { limiter, store, advance } = setup();
+
+    await limiter.record("login", { identifier: "a@example.fr", ip: "10.0.9.1" });
+    assert.equal(store.purges.length, 1, "la première requête purge");
+
+    advance(30 * MINUTE);
+    await limiter.record("login", { identifier: "b@example.fr", ip: "10.0.9.2" });
+    assert.equal(store.purges.length, 1, "pas de seconde purge avant une heure");
+
+    advance(AUTH_RATE_LIMIT_PURGE_INTERVAL_MS);
+    await limiter.check("login", { identifier: "c@example.fr", ip: "10.0.9.3" });
+    assert.equal(store.purges.length, 2, "la purge reprend une heure plus tard");
+  });
+
+  test("une purge en échec n'empêche pas la requête de se dérouler", async () => {
+    const { limiter, store } = setup();
+    store.failPurge = true;
+
+    await limiter.record("login", { identifier: "demo@example.fr", ip: "10.0.9.9" });
+    assert.deepEqual(await limiter.check("login", { identifier: "demo@example.fr" }), {
+      limited: false,
+    });
+  });
+
+  test("la purge manuelle vide les événements expirés", async () => {
+    const { limiter, store, now } = setup();
+    const oldKey = rateLimitKey("login", "id", "vieux@example.fr");
+    store.events.set(oldKey, [now() - AUTH_RATE_LIMIT_RETENTION_MS - MINUTE]);
+
+    await limiter.purge();
+
+    assert.equal(store.events.has(oldKey), false);
   });
 });
 
 describe("limitation de l'inscription", () => {
-  test("bloque au-delà de 5 demandes pour un même email", async () => {
+  test("bloque au-delà de 5 demandes pour un même email depuis la même IP", async () => {
     const { limiter } = setup();
     const identifier = "spam@example.fr";
-    for (let i = 0; i < 5; i++) await limiter.record("register", { identifier, ip: `10.1.0.${i}` });
+    const ip = "198.51.100.40";
+    for (let i = 0; i < 5; i++) await limiter.record("register", { identifier, ip });
 
-    const blocked = await limiter.check("register", { identifier: "  SPAM@example.fr " });
+    const blocked = await limiter.check("register", { identifier: "  SPAM@example.fr ", ip });
     assert.equal(blocked.limited, true);
     assert.equal(blocked.limited && blocked.retryAfterSeconds, 60 * 60);
   });
 
-  test("10 inscriptions depuis une IP bloquent la 11e, pas une autre IP", async () => {
+  test("une autre IP ne peut pas bloquer un email connu", async () => {
+    const { limiter } = setup();
+    const identifier = "victime@example.fr";
+    for (let i = 0; i < 5; i++) {
+      await limiter.record("register", { identifier, ip: "198.51.100.41" });
+    }
+
+    assert.equal(
+      (await limiter.check("register", { identifier, ip: "198.51.100.41" })).limited,
+      true,
+      "l'attaquant est bloqué sur sa propre adresse"
+    );
+    assert.equal(
+      (await limiter.check("register", { identifier, ip: "198.51.100.42" })).limited,
+      false,
+      "la victime, depuis une autre adresse, n'est pas bloquée"
+    );
+  });
+
+  test("le budget par IP reste indépendant des emails demandés", async () => {
     const { limiter } = setup();
     for (let i = 0; i < 10; i++) {
       await limiter.record("register", { identifier: `spam${i}@example.fr`, ip: "198.51.100.20" });
@@ -264,6 +365,28 @@ describe("limitation de l'inscription", () => {
     assert.deepEqual(
       [...store.events.keys()],
       [rateLimitKey("register", "ip", "198.51.100.30")]
+    );
+  });
+
+  test("la portée de l'inscription associe l'email et l'IP", () => {
+    const key = identifierScopeKey("register", {
+      identifier: "victime@example.fr",
+      ip: "198.51.100.42",
+    });
+    assert.ok(key?.startsWith("register:id-ip:"));
+    assert.equal(
+      key,
+      identifierScopeKey("register", {
+        identifier: "  VICTIME@example.fr ",
+        ip: "198.51.100.42",
+      })
+    );
+    assert.notEqual(
+      key,
+      identifierScopeKey("register", {
+        identifier: "victime@example.fr",
+        ip: "198.51.100.43",
+      })
     );
   });
 });
@@ -305,9 +428,13 @@ describe("messages et lecture de l'IP", () => {
     assert.equal(AUTH_RATE_LIMITS.login.identifier, 5);
     assert.equal(AUTH_RATE_LIMITS.login.ip, 20);
     assert.equal(AUTH_RATE_LIMITS.login.windowMs, 15 * MINUTE);
+    assert.equal(AUTH_RATE_LIMITS.login.identifierScope, "id");
     assert.equal(AUTH_RATE_LIMITS.register.identifier, 5);
     assert.equal(AUTH_RATE_LIMITS.register.ip, 10);
     assert.equal(AUTH_RATE_LIMITS.register.windowMs, 60 * MINUTE);
+    assert.equal(AUTH_RATE_LIMITS.register.identifierScope, "id-ip");
+    assert.equal(AUTH_RATE_LIMIT_RETENTION_MS, 24 * HOUR);
+    assert.equal(AUTH_RATE_LIMIT_PURGE_INTERVAL_MS, HOUR);
   });
 
   test("le condensat ne contient jamais la valeur en clair", () => {

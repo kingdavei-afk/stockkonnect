@@ -95,7 +95,11 @@ Sécurité : le webhook ne fait jamais confiance au POST reçu — le `notify_to
 Les échecs sont horodatés en base (`AuthRateLimitEvent`, clés condensées SHA-256) pour rester efficaces sur Vercel, où chaque requête peut viser une instance différente :
 
 - **Connexion** : 5 échecs / 15 min par identifiant, 20 / 15 min par IP. Le blocage intervient avant `bcrypt` ; une connexion réussie remet le compteur de l'identifiant à zéro.
-- **Inscription** : 5 demandes / heure par email, 10 / heure par IP. Toute demande valide est comptée (y compris réussie), et le contrôle précède la validation : une réponse `429` ne révèle pas si l'email existe.
+- **Inscription** : 5 demandes / heure **par couple email + IP**, 10 / heure par IP. Toute demande valide est comptée (y compris réussie), et le contrôle précède la validation : une réponse `429` ne révèle pas si l'email existe. Le budget par email étant lié à l'IP qui le consomme, quelqu'un qui connaît une adresse ne peut pas la bloquer depuis sa propre machine.
+
+La fenêtre est **glissante** : on compte les événements survenus dans les N dernières minutes et ils en sortent un par un (le délai `Retry-After` se recalcule à chaque appel), jamais par blocs alignés sur l'heure.
+
+Les événements sont purgés automatiquement : dès qu'une requête le demande, les plus vieux de 24 h sont supprimés (au plus une fois par heure, aucun cron externe nécessaire).
 
 Réponse : `429` + en-tête `Retry-After` + message français. Les numéros WhatsApp sont comparés sur leurs 9 derniers chiffres, donc `+225…`, `00225…` et `07 99…` partagent un seul compteur.
 

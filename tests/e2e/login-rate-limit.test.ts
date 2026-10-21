@@ -5,7 +5,7 @@ import { createServer } from "node:net";
 import { after, before, describe, test } from "node:test";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
-import { rateLimitKey } from "../../src/lib/auth-rate-limit-core";
+import { identifierScopeKey, rateLimitKey } from "../../src/lib/auth-rate-limit-core";
 
 /**
  * Suite HTTP réelle : elle démarre le build de production (`next start`) et
@@ -36,7 +36,6 @@ const IPS = {
   resetOnSuccess: "203.0.113.13",
   register: "203.0.113.14",
   registerOtherIp: "203.0.113.15",
-  registerBlockedBeforeValidation: "203.0.113.16",
 };
 
 const prisma = new PrismaClient();
@@ -168,6 +167,12 @@ describe("limitation des tentatives d'authentification (HTTP)", () => {
       ...loginIdentifiers.map((identifier) => rateLimitKey("login", "id", identifier)),
       ...Object.values(IPS).map((ip) => rateLimitKey("login", "ip", ip)),
       ...Object.values(IPS).map((ip) => rateLimitKey("register", "ip", ip)),
+      // Portée « id-ip » de l'inscription : le couple email + IP.
+      ...[EMAIL, SECOND_EMAIL].flatMap((email) =>
+        Object.values(IPS).map(
+          (ip) => identifierScopeKey("register", { identifier: email, ip }) as string
+        )
+      ),
       ...[EMAIL, SECOND_EMAIL].map((email) => rateLimitKey("register", "id", email)),
     ];
     await prisma.authRateLimitEvent.deleteMany({ where: { key: { in: keys } } });
@@ -245,9 +250,22 @@ describe("limitation des tentatives d'authentification (HTTP)", () => {
     assert.match(blocked.body?.error ?? "", /Trop de tentatives d'inscription/);
   });
 
-  test("la limite d'inscription est contrôlée avant validation et ne dépend pas du compte", async () => {
-    const blocked = await register(EMAIL, IPS.registerBlockedBeforeValidation, "x");
-    assertBlocked(blocked, "payload invalide sur un email bloqué");
+  test("la limite d'inscription est contrôlée avant validation", async () => {
+    // Le couple email + IP est déjà saturé : la réponse doit être 429 et non
+    // 400, le contrôle passe donc avant la validation du corps de la requête.
+    const blocked = await register(EMAIL, IPS.register, "x");
+    assertBlocked(blocked, "payload invalide sur un couple email/IP bloqué");
+  });
+
+  test("un email connu bloqué depuis une IP ne l'est pas depuis une autre IP", async () => {
+    const blocked = await register(EMAIL, IPS.register);
+    assertBlocked(blocked, "inscription depuis l'IP qui a saturé le couple");
+
+    // La portée de l'inscription associe l'email à l'IP : une autre source
+    // ne peut pas avoir bloqué cette adresse pour la victime.
+    const elsewhere = await register(EMAIL, IPS.registerOtherIp);
+    assert.equal(elsewhere.status, 409, "l'email existe déjà, mais ce n'est pas un blocage");
+    assert.equal(elsewhere.retryAfter, null);
   });
 
   test("une autre adresse IP n'est pas bloquée par la limite d'inscription", async () => {

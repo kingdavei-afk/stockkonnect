@@ -1,5 +1,9 @@
 import { db } from "./db";
-import { createAuthRateLimiter, type AuthRateLimitStore } from "./auth-rate-limit-core";
+import {
+  createAuthRateLimiter,
+  AUTH_RATE_LIMIT_RETENTION_MS,
+  type AuthRateLimitStore,
+} from "./auth-rate-limit-core";
 
 /**
  * Stockage Prisma des événements de limitation.
@@ -34,10 +38,24 @@ const prismaStore: AuthRateLimitStore = {
 
 export const authRateLimit = createAuthRateLimiter({ store: prismaStore });
 
+/**
+ * Purge immédiate des événements trop vieux pour qu'un compteur les lise.
+ * La purge automatique du limiteur fait déjà le travail en continu ; cette
+ * fonction sert à un cron ou à une action d'administration.
+ */
+export async function purgeExpiredAuthRateLimitEvents(): Promise<number> {
+  const { count } = await db.authRateLimitEvent.deleteMany({
+    where: { createdAt: { lt: new Date(Date.now() - AUTH_RATE_LIMIT_RETENTION_MS) } },
+  });
+  return count;
+}
+
 export {
   AUTH_RATE_LIMITS,
+  AUTH_RATE_LIMIT_PURGE_INTERVAL_MS,
   AUTH_RATE_LIMIT_RETENTION_MS,
   clientIp,
+  identifierScopeKey,
   rateLimitKey,
   rateLimitMessage,
   rateLimitScopes,
@@ -46,5 +64,6 @@ export type {
   AuthAction,
   AuthRateLimitPolicy,
   AuthRateLimitResult,
+  AuthRateLimitScope,
   AuthRateLimitSubject,
 } from "./auth-rate-limit-core";
