@@ -70,7 +70,7 @@ model Settings {
   id                String       @id @default(cuid())
   organizationId    String       @unique
   organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  currency          String       @default("EUR")
+  currency          String       @default("XOF")
   lowStockThreshold Int          @default(5)
 }
 

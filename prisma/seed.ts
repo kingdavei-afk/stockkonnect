@@ -101,7 +101,7 @@ async function main() {
       maxProducts: 10,
       planEndsAt: null,
       trialEndsAt: null,
-      settings: { create: { currency: "EUR", lowStockThreshold: 5 } },
+      settings: { create: { currency: "XOF", lowStockThreshold: 5 } },
       users: {
         create: { email, name: "Utilisateur Démo", passwordHash, role: "ADMIN" },
       },

@@ -7,7 +7,7 @@ export default async function DashboardPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
   const orgId = user.organizationId;
-  const currency = user.organization.settings?.currency ?? "EUR";
+  const currency = user.organization.settings?.currency ?? "XOF";
 
   const monthStart = new Date();
   monthStart.setDate(1);

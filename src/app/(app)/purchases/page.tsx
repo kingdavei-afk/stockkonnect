@@ -34,7 +34,7 @@ export default async function PurchasesPage() {
       purchases={purchases}
       products={products}
       suppliers={suppliers}
-      currency={user.organization.settings?.currency ?? "EUR"}
+      currency={user.organization.settings?.currency ?? "XOF"}
     />
   );
 }

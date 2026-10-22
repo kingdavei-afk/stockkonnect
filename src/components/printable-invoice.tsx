@@ -15,6 +15,8 @@ export type CompanyInfo = {
   phone: string | null;
   email: string | null;
   taxId: string | null;
+  bankAccount?: string | null;
+  mainActivities?: string | null;
 };
 
 /**
@@ -32,6 +34,7 @@ export function PrintableInvoice({
   currency,
   statusLabel,
   notes,
+  validUntil,
   onClose,
 }: {
   title: string;
@@ -44,11 +47,21 @@ export function PrintableInvoice({
   currency: string;
   statusLabel?: string;
   notes?: string | null;
+  /** Devis seulement : date limite de validité. */
+  validUntil?: string | null;
   onClose: () => void;
 }) {
+  const initials = company.name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join("");
+  const isQuote = /devis/i.test(title);
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4">
-      <div className="card my-8 w-full max-w-2xl p-6">
+      <div className="card my-8 w-full max-w-3xl p-4 sm:p-6">
         <div className="mb-4 flex items-center justify-between print:hidden">
           <h2 className="text-lg font-bold">{title}</h2>
           <button className="btn-secondary !p-2" onClick={onClose} aria-label="Fermer">
@@ -56,74 +69,153 @@ export function PrintableInvoice({
           </button>
         </div>
 
-        <div id="invoice-print" className="rounded-lg border border-slate-200 bg-white p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-lg font-bold">{company.name}</p>
-              {company.address && <p className="text-sm text-slate-600">{company.address}</p>}
-              {company.phone && <p className="text-sm text-slate-600">Tél. : {company.phone}</p>}
-              {company.email && <p className="text-sm text-slate-600">{company.email}</p>}
-              {company.taxId && (
-                <p className="text-xs text-slate-500">NIF / Identifiant fiscal : {company.taxId}</p>
-              )}
+        <div
+          id="invoice-print"
+          className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+        >
+          {/* Bandeau d'en-tête */}
+          <div className="flex items-stretch justify-between bg-slate-900 px-6 py-5 text-white">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white/10 text-lg font-bold tracking-tight">
+                {initials || "•"}
+              </div>
+              <div>
+                <p className="text-base font-bold leading-tight">{company.name}</p>
+                <p className="text-xs text-slate-300">
+                  {[company.address, company.phone].filter(Boolean).join(" · ") || "—"}
+                </p>
+              </div>
             </div>
             <div className="text-right">
-              <p className="text-lg font-bold uppercase tracking-wide">{title}</p>
-              <p className="font-mono text-sm">{reference}</p>
-              <p className="text-sm text-slate-600">
-                {new Date(date).toLocaleDateString("fr-FR", {
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric",
-                })}
+              <p className="text-sm font-bold uppercase tracking-[0.2em] text-indigo-300">
+                {isQuote ? "Devis" : "Facture"}
               </p>
-              {statusLabel && <p className="mt-1 text-sm font-medium">{statusLabel}</p>}
+              <p className="font-mono text-sm font-semibold">{reference}</p>
             </div>
           </div>
 
-          {customerName && (
-            <div className="mt-6">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Client
-              </p>
-              <p className="text-sm font-medium">{customerName}</p>
+          <div className="px-6 py-5">
+            {/* Dates et statut */}
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Client
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-slate-900">
+                  {customerName || "Client anonyme"}
+                </p>
+                {company.email && (
+                  <p className="mt-1 text-xs text-slate-500">{company.email}</p>
+                )}
+              </div>
+              <div className="rounded-lg bg-slate-50 px-3 py-2 text-right ring-1 ring-slate-200">
+                <p className="text-xs text-slate-500">
+                  Date&nbsp;:{" "}
+                  <span className="font-medium text-slate-800">
+                    {new Date(date).toLocaleDateString("fr-FR", {
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </span>
+                </p>
+                {validUntil && (
+                  <p className="text-xs text-slate-500">
+                    Valable jusqu&apos;au&nbsp;:{" "}
+                    <span className="font-medium text-slate-800">
+                      {new Date(validUntil).toLocaleDateString("fr-FR", {
+                        day: "2-digit",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </p>
+                )}
+                {statusLabel && (
+                  <p className="mt-0.5">
+                    <span className="badge bg-indigo-100 text-indigo-700">{statusLabel}</span>
+                  </p>
+                )}
+              </div>
             </div>
-          )}
 
-          <table className="mt-6 w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b-2 border-slate-300 text-left">
-                <th className="py-2">Article</th>
-                <th className="py-2 text-center">Qté</th>
-                <th className="py-2 text-right">Prix unitaire</th>
-                <th className="py-2 text-right">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((l, i) => (
-                <tr key={i} className="border-b border-slate-100">
-                  <td className="py-2">{l.name}</td>
-                  <td className="py-2 text-center">{l.quantity}</td>
-                  <td className="py-2 text-right">{formatMoney(l.unitPrice, currency)}</td>
-                  <td className="py-2 text-right">{formatMoney(l.unitPrice * l.quantity, currency)}</td>
+            {/* Tableau des lignes */}
+            <table className="mt-5 w-full border-collapse text-sm">
+              <thead>
+                <tr className="bg-slate-50">
+                  <th className="rounded-l-md px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-600">
+                    Article
+                  </th>
+                  <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-slate-600">
+                    Qté
+                  </th>
+                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-600">
+                    Prix unitaire
+                  </th>
+                  <th className="rounded-r-md px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-600">
+                    Total
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-slate-300">
-                <td colSpan={3} className="py-3 text-right font-semibold">
-                  Total
-                </td>
-                <td className="py-3 text-right text-lg font-bold">{formatMoney(total, currency)}</td>
-              </tr>
-            </tfoot>
-          </table>
+              </thead>
+              <tbody>
+                {lines.map((l, i) => (
+                  <tr key={i} className="border-b border-slate-100">
+                    <td className="px-3 py-2 text-slate-800">{l.name}</td>
+                    <td className="px-3 py-2 text-center tabular-nums text-slate-600">
+                      {l.quantity}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-600">
+                      {formatMoney(l.unitPrice, currency)}
+                    </td>
+                    <td className="px-3 py-2 text-right font-medium tabular-nums text-slate-900">
+                      {formatMoney(l.unitPrice * l.quantity, currency)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
-          {notes && <p className="mt-4 whitespace-pre-wrap text-sm text-slate-600">{notes}</p>}
+            {/* Total */}
+            <div className="mt-4 flex justify-end">
+              <div className="w-full max-w-xs rounded-lg bg-indigo-50 px-4 py-3 ring-1 ring-indigo-100">
+                <div className="flex items-baseline justify-between">
+                  <p className="text-sm font-semibold uppercase tracking-wide text-indigo-900">
+                    Total {isQuote ? "estimé" : "à payer"}
+                  </p>
+                  <p className="text-lg font-bold text-indigo-900">
+                    {formatMoney(total, currency)}
+                  </p>
+                </div>
+              </div>
+            </div>
 
-          <p className="mt-8 text-center text-xs text-slate-400">
-            Merci de votre confiance. — {company.name}
-          </p>
+            {/* Notes et mentions */}
+            {notes && (
+              <div className="mt-5 rounded-lg bg-slate-50 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Notes
+                </p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{notes}</p>
+              </div>
+            )}
+
+            {(company.taxId || company.bankAccount || company.mainActivities) && (
+              <div className="mt-5 border-t border-slate-200 pt-3 text-[11px] leading-relaxed text-slate-500">
+                <p><span className="font-semibold text-slate-600">Activité :</span> {company.mainActivities || "—"}</p>
+                <p><span className="font-semibold text-slate-600">NIF / Identifiant fiscal :</span> {company.taxId || "—"}</p>
+                <p>
+                  <span className="font-semibold text-slate-600">Coordonnées bancaires :</span>{" "}
+                  {company.bankAccount || "—"}
+                </p>
+              </div>
+            )}
+
+            <p className="mt-5 border-t border-slate-200 pt-3 text-center text-xs text-slate-400">
+              {isQuote
+                ? `Devis valable jusqu'à la date indiquée — Thank you for your trust. — ${company.name}`
+                : `Merci de votre confiance. — ${company.name}`}
+            </p>
+          </div>
         </div>
 
         <button className="btn-primary mt-4 w-full print:hidden" onClick={() => window.print()}>

@@ -406,9 +406,10 @@ export function QuotesClient({
           currency={currency}
           statusLabel={
             invoice.validUntil
-              ? `Valide jusqu'au ${new Date(invoice.validUntil).toLocaleDateString("fr-FR")}`
+              ? `Valider avant le ${new Date(invoice.validUntil).toLocaleDateString("fr-FR")}`
               : undefined
           }
+          validUntil={invoice.validUntil}
           notes={invoice.notes}
           onClose={() => setInvoice(null)}
         />

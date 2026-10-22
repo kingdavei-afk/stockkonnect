@@ -294,7 +294,7 @@ export function ProductsClient({
               {error}
             </div>
           )}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
             <div>
               <label className="label">Nom *</label>
               <input
@@ -313,7 +313,7 @@ export function ProductsClient({
                 required
               />
             </div>
-            <div>
+            <div className="sm:col-span-2">
               <label className="label">Code-barres</label>
               <input
                 className="input font-mono"

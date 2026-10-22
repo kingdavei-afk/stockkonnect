@@ -6,13 +6,13 @@ import Link from "next/link";
 import { Building2, FileText, CreditCard, Sparkles } from "lucide-react";
 
 const CURRENCIES = [
+  { code: "XOF", label: "Franc CFA (FCFA)" },
   { code: "EUR", label: "Euro (€)" },
   { code: "USD", label: "Dollar US ($)" },
   { code: "CHF", label: "Franc suisse (CHF)" },
   { code: "GBP", label: "Livre sterling (£)" },
   { code: "CAD", label: "Dollar canadien (C$)" },
   { code: "MAD", label: "Dirham marocain (MAD)" },
-  { code: "XOF", label: "Franc CFA (XOF)" },
 ];
 
 type Organization = {

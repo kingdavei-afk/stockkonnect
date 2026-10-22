@@ -28,7 +28,7 @@ export default async function ProductsPage() {
       products={products}
       categories={categories}
       suppliers={suppliers}
-      currency={user.organization.settings?.currency ?? "EUR"}
+      currency={user.organization.settings?.currency ?? "XOF"}
     />
   );
 }

@@ -35,13 +35,15 @@ export default async function SalesPage() {
       sales={sales}
       products={products}
       customers={customers}
-      currency={org.settings?.currency ?? "EUR"}
+      currency={org.settings?.currency ?? "XOF"}
       company={{
         name: org.name,
         address: org.address,
         phone: org.phone,
         email: org.email,
         taxId: org.taxId,
+        bankAccount: org.bankAccount,
+        mainActivities: org.mainActivities,
       }}
     />
   );

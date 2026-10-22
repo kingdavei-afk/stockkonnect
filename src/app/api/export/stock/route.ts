@@ -8,7 +8,7 @@ export async function GET() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
-  const currency = user.organization.settings?.currency ?? "EUR";
+  const currency = user.organization.settings?.currency ?? "XOF";
 
   const products = await db.product.findMany({
     where: { organizationId: user.organizationId },
