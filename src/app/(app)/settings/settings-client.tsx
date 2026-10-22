@@ -26,6 +26,8 @@ type Organization = {
   mainActivities: string;
 };
 
+const MAX_LOGO_SIZE = 4 * 1024 * 1024; // aligné sur /api/upload
+
 type Subscription = {
   planId: string;
   planName: string;
@@ -50,6 +52,7 @@ export function SettingsClient({
   userEmail,
   role,
   organization: initialOrg,
+  logo: initialLogo,
   currency: initialCurrency,
   lowStockThreshold: initialThreshold,
   subscription,
@@ -59,12 +62,14 @@ export function SettingsClient({
   userEmail: string;
   role: string;
   organization: Organization;
+  logo: string | null;
   currency: string;
   lowStockThreshold: number;
   subscription: Subscription;
 }) {
   const router = useRouter();
   const [org, setOrg] = useState(initialOrg);
+  const [logo, setLogo] = useState<string | null>(initialLogo);
   const [currency, setCurrency] = useState(initialCurrency);
   const [threshold, setThreshold] = useState(String(initialThreshold));
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -90,10 +95,10 @@ export function SettingsClient({
         address: org.address,
         phone: org.phone,
         email: org.email,
-        industry: org.industry,
-        taxId: org.taxId,
+        industry: org.industry,        taxId: org.taxId,
         bankAccount: org.bankAccount,
         mainActivities: org.mainActivities,
+        logo,
       }),
     });
     setSaving(false);
@@ -106,7 +111,32 @@ export function SettingsClient({
     router.refresh();
   }
 
-  const field = (label: string, key: keyof Organization, props: Record<string, string | boolean | undefined> = {}) => (
+  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permet de re-sélectionner le même fichier
+    if (!file) return;
+    if (file.size > MAX_LOGO_SIZE) {
+      setMessage({ type: "err", text: "Logo trop volumineux (max 4 Mo)" });
+      return;
+    }
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      setMessage({ type: "err", text: data?.error ?? "Upload impossible" });
+      return;
+    }
+    const { url } = await res.json();
+    setLogo(url);
+    setMessage({ type: "ok", text: "Logo chargé — n'oubliez pas d'enregistrer." });
+  }
+
+  const field = (
+    label: string,
+    key: keyof Organization,
+    props: Record<string, string | boolean | undefined> = {}
+  ) => (
     <div>
       <label className="label">{label}</label>
       <input
@@ -184,6 +214,48 @@ export function SettingsClient({
             Ces informations apparaîtront sur vos factures et documents officiels.
           </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label">Logo de l&apos;entreprise</label>
+              <div className="flex items-center gap-4">
+                {logo ? (
+                  <img
+                    src={logo}
+                    alt="Logo de l'entreprise"
+                    className="h-14 w-14 rounded-lg border border-slate-200 bg-white object-contain p-1"
+                  />
+                ) : (
+                  <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-400">
+                    Aucun
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {isAdmin && (
+                    <label className="btn-secondary cursor-pointer">
+                      Choisir un fichier
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/gif"
+                        className="hidden"
+                        onChange={handleLogoChange}
+                        disabled={!isAdmin}
+                      />
+                    </label>
+                  )}
+                  {isAdmin && logo && (
+                  <button
+                    type="button"
+                    className="btn-secondary text-red-600"
+                    onClick={() => setLogo(null)}
+                  >
+                    Enlever
+                  </button>
+                )}
+              </div>
+              <p className="mt-2 text-xs text-slate-400">
+                PNG, JPEG, WebP ou GIF — 4 Mo max. Le logo apparaît en haut de vos factures et devis.
+              </p>
+            </div>
+            </div>
             {field("Numéro d'identité fiscale", "taxId", { placeholder: "Ex : CI-ABJ-2026-B-12345" })}
             {field("Numéro de compte bancaire", "bankAccount", { placeholder: "Ex : CI93 CI15 0100 0001 ..." })}
             <div className="sm:col-span-2">

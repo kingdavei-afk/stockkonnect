@@ -51,20 +51,50 @@ export class InvoicePdf {
   /** Ligne de texte ; passe à la page suivante automatiquement si nécessaire. */
   text(
     str: string,
-    opts: { size?: number; bold?: boolean; indent?: number; gap?: number; color?: string } = {}
+    opts: {
+      size?: number;
+      bold?: boolean;
+      indent?: number;
+      gap?: number;
+      color?: string;
+      /** Aligne la fin du texte sur cette coordonnée X (texte à droite). */
+      rightAt?: number;
+      /** Désactive l'avancement automatique de Y. */
+      noAdvance?: boolean;
+    } = {}
   ) {
-    const { size = 11, bold = false, indent = 0, gap = 8, color = "0 0 0" } = opts;
+    const { size = 11, bold = false, indent = 0, gap = 8, color = "0 0 0", rightAt, noAdvance } = opts;
     if (this.y < 60) this.pageBreak();
     const font = bold ? "/F2" : "/F1";
+    // Largeur approximative en Helvetica ~0.55 × taille par caractère.
+    const x = rightAt !== undefined ? rightAt - size * 0.55 * str.length : 40 + indent;
     this.current.push(
       "BT",
       `${color} rg`,
       `${font} ${size} Tf`,
-      `1 0 0 1 ${40 + indent} ${this.y} Tm`,
+      `1 0 0 1 ${x} ${this.y} Tm`,
       `(${esc(latin1(str))}) Tj`,
       "ET"
     );
-    this.y -= size + gap;
+    if (!noAdvance) this.y -= size + gap;
+  }
+
+  /** Rectangle plein (couleur « r g b »). Ne consomme pas de Y. */
+  rect(x: number, y: number, w: number, h: number, color: string) {
+    this.current.push(
+      "q",
+      `${color} rg`,
+      `${x} ${y} ${w} ${h} re f`,
+      "Q"
+    );
+  }
+
+  /** Exécute une fonction à une position Y donnée sans déplacer l'écoulement. */
+  at(y: number, draw: () => void) {
+    const saved = this.y;
+    this.y = y;
+    draw();
+    this.y = saved;
   }
 
   line() {
@@ -76,6 +106,16 @@ export class InvoicePdf {
 
   spacer(h = 8) {
     this.y -= h;
+  }
+
+  /** Définit la position du curseur vertical. */
+  startAt(y: number) {
+    this.y = y;
+  }
+
+  /** Position verticale courante du curseur. */
+  getCursorY(): number {
+    return this.y;
   }
 
   pageBreak() {

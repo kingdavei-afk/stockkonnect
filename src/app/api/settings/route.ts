@@ -19,6 +19,8 @@ const schema = z.object({
   taxId: z.string().max(60).optional().or(z.literal("")),
   bankAccount: z.string().max(60).optional().or(z.literal("")),
   mainActivities: z.string().max(500).optional().or(z.literal("")),
+  // Logo (data URL généré par /api/upload) ; null = supprimer le logo
+  logo: z.string().startsWith("data:image/", { message: "Logo invalide" }).max(6_000_000).optional().or(z.null()),
 });
 
 const clean = (v: string | undefined) => {
@@ -56,6 +58,7 @@ export async function PATCH(req: NextRequest) {
         taxId: clean(d.taxId),
         bankAccount: clean(d.bankAccount),
         mainActivities: clean(d.mainActivities),
+        logo: d.logo === null ? null : (d.logo?.trim() || undefined),
       },
     }),
     db.settings.upsert({

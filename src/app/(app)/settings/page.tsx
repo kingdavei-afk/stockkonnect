@@ -31,6 +31,7 @@ export default async function SettingsPage() {
         bankAccount: org?.bankAccount ?? "",
         mainActivities: org?.mainActivities ?? "",
       }}
+      logo={org?.logo ?? null}
       currency={settings?.currency ?? "XOF"}
       lowStockThreshold={settings?.lowStockThreshold ?? 5}
       subscription={{

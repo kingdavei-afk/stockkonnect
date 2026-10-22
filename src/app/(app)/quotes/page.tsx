@@ -48,6 +48,7 @@ export default async function QuotesPage() {
         taxId: org.taxId,
         bankAccount: org.bankAccount,
         mainActivities: org.mainActivities,
+        logo: org.logo,
       }}
     />
   );

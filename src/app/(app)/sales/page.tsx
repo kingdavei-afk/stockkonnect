@@ -44,6 +44,7 @@ export default async function SalesPage() {
         taxId: org.taxId,
         bankAccount: org.bankAccount,
         mainActivities: org.mainActivities,
+        logo: org.logo,
       }}
     />
   );

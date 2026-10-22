@@ -411,6 +411,8 @@ export function QuotesClient({
           }
           validUntil={invoice.validUntil}
           notes={invoice.notes}
+          documentId={invoice.id}
+          documentType="QUOTE"
           onClose={() => setInvoice(null)}
         />
       )}

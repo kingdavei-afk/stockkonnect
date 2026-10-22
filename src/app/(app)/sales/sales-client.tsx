@@ -171,6 +171,8 @@ export function SalesClient({
           total={invoice.total}
           currency={currency}
           statusLabel={invoice.status === "COMPLETED" ? "Réglée" : "Annulée"}
+          documentId={invoice.id}
+          documentType="SALE"
           onClose={() => setInvoice(null)}
         />
       )}

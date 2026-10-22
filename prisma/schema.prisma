@@ -52,6 +52,7 @@ model Organization {
   taxId        String?  // numéro d'identité fiscale
   bankAccount  String?  // numéro de compte bancaire
   mainActivities String? // activités principales
+  logo           String?  // data URL du logo, affiché sur les factures/devis
   createdAt    DateTime @default(now())
   users        User[]
   settings     Settings?

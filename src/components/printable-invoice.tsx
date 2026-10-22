@@ -1,6 +1,7 @@
 "use client";
 
-import { Printer, X } from "lucide-react";
+import { useState } from "react";
+import { Download, Printer, X } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 
 export type DocumentLine = {
@@ -17,6 +18,8 @@ export type CompanyInfo = {
   taxId: string | null;
   bankAccount?: string | null;
   mainActivities?: string | null;
+  /** Data URL du logo entreprise (facultatif). */
+  logo?: string | null;
 };
 
 /**
@@ -35,6 +38,10 @@ export function PrintableInvoice({
   statusLabel,
   notes,
   validUntil,
+  /** Identifiant du document côté serveur → active le bouton PDF. */
+  documentId,
+  /** Type de document : "SALE" pour une facture, "QUOTE" pour un devis. */
+  documentType,
   onClose,
 }: {
   title: string;
@@ -49,6 +56,8 @@ export function PrintableInvoice({
   notes?: string | null;
   /** Devis seulement : date limite de validité. */
   validUntil?: string | null;
+  documentId?: string | null;
+  documentType?: "SALE" | "QUOTE";
   onClose: () => void;
 }) {
   const initials = company.name
@@ -58,6 +67,36 @@ export function PrintableInvoice({
     .map((word) => word[0]?.toUpperCase())
     .join("");
   const isQuote = /devis/i.test(title);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+
+  async function downloadPdf() {
+    if (!documentId || !documentType) return;
+    setPdfLoading(true);
+    setPdfError(null);
+    try {
+      const res = await fetch("/api/documents/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: documentType, id: documentId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? "Génération du PDF impossible");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${isQuote ? "devis" : "facture"}-${reference}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setPdfError(e instanceof Error ? e.message : "Génération du PDF impossible");
+    } finally {
+      setPdfLoading(false);
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4">
@@ -76,9 +115,18 @@ export function PrintableInvoice({
           {/* Bandeau d'en-tête */}
           <div className="flex items-stretch justify-between bg-slate-900 px-6 py-5 text-white">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white/10 text-lg font-bold tracking-tight">
-                {initials || "•"}
-              </div>
+              {company.logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={company.logo}
+                  alt={company.name}
+                  className="h-12 w-12 shrink-0 rounded-lg bg-white object-contain p-0.5"
+                />
+              ) : (
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white/10 text-lg font-bold tracking-tight">
+                  {initials || "•"}
+                </div>
+              )}
               <div>
                 <p className="text-base font-bold leading-tight">{company.name}</p>
                 <p className="text-xs text-slate-300">
@@ -218,10 +266,26 @@ export function PrintableInvoice({
           </div>
         </div>
 
-        <button className="btn-primary mt-4 w-full print:hidden" onClick={() => window.print()}>
-          <Printer className="h-4 w-4" />
-          Imprimer
-        </button>
+        {pdfError && (
+          <p className="mt-2 text-center text-xs text-red-600 print:hidden">{pdfError}</p>
+        )}
+
+        <div className="mt-4 flex flex-col gap-2 print:hidden sm:flex-row sm:justify-end">
+          {documentId && documentType && (
+            <button
+              className="btn-secondary"
+              disabled={pdfLoading}
+              onClick={downloadPdf}
+            >
+              <Download className="h-4 w-4" />
+              {pdfLoading ? "Génération…" : "Télécharger le PDF"}
+            </button>
+          )}
+          <button className="btn-primary" onClick={() => window.print()}>
+            <Printer className="h-4 w-4" />
+            Imprimer
+          </button>
+        </div>
       </div>
     </div>
   );
